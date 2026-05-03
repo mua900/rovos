@@ -52,6 +52,7 @@ enum UiElementId {
     SettingsButton,
     QuitButton,
     BackButton,
+    MainEditor,
 };
 
 struct Label {
@@ -99,9 +100,10 @@ struct Text_Field
     UiElementId id = {};
 
     Rectangle m_area = {};
+    Color background = {};
+
     GapBuffer m_buffer = {};
     String_Builder m_text = {};
-    Color background = {};
     int m_cursor_pixel_x = 0;
     int m_cursor_pixel_y = 0;
     int m_cursor_line = 0;
@@ -115,8 +117,15 @@ struct Text_Field
 
     Text_Field() {}
 
-    Text_Field(Rectangle area)
+    Text_Field(Rectangle area, Color background_color)
     {
+        background = background_color;
+        m_area = area;
+    }
+
+    Text_Field(Rectangle area, Color background_color, UiElementId ident) : id(ident)
+    {
+        background = background_color;
         m_area = area;
     }
 
@@ -221,15 +230,18 @@ struct Text_Field
         SDL_SetTextInputArea(window, &area, m_cursor_pixel_x);
     }
 
-    // @todo fix
-    // both of these assume wrapped text
-    void calculate_cursor_from_selection(String string, Font font);
-    size_t calculate_cursor_from_mouse(vec2 mouse_position, String string, Font font);
+    void calculate_cursor_from_selection(String string, Font font, bool wrapped);
+    size_t calculate_cursor_from_mouse(vec2 mouse_position, String string, Font font, bool wrapped);
 
 private:
     bool render_text_field_texture(SDL_Renderer* renderer, Font font, Color color, bool wrapped);
 };
 
+struct Editor {
+    Text_Field field;
+    MutableString name;
+
+};
 
 #define DROP_DOWN_LIST_SELECTED_SENTINEL -1
 
@@ -324,11 +336,17 @@ struct Drop_Down_List {
     }
 };
 
+static const int TEXT_INPUT_TARGET_SENTINEL = -1;
+
 struct UiState {
     DArray<Text_Field> text_field;
     DArray<Drop_Down_List> drop_down;
     DArray<Label> button;
     DArray<Label> label;
+
+    int text_input_target = TEXT_INPUT_TARGET_SENTINEL;
+
+    Text_Field* get_selected_text_field();
 
     Text_Field& get_text_field(UiElementId id);
     Drop_Down_List& get_drop_down(UiElementId id);

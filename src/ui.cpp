@@ -119,7 +119,7 @@ void GapBuffer::get_string(String_Builder& sb)
 	sb.append(String(buffer + end_gap, length - gap_index));
 }
 
-void Text_Field::calculate_cursor_from_selection(String string, Font font)
+void Text_Field::calculate_cursor_from_selection(String string, Font font, bool wrapped)
 {
     int line_skip = TTF_GetFontLineSkip(font.font);
 
@@ -128,27 +128,46 @@ void Text_Field::calculate_cursor_from_selection(String string, Font font)
     int cursor_pixel_x = 0;
     size_t cursor_character = 0;
 
-    while (cursor_character < m_selection_start)
+    Rectangle area = m_area;
+
+    if (wrapped)
     {
-        size_t cursor_character_this_line = 0;
-        TTF_MeasureString(font.font, string.data + cursor_character, m_selection_start - cursor_character, m_area.w, &cursor_pixel_x, &cursor_character_this_line);
+        while (cursor_character < m_selection_start)
+        {
+            size_t cursor_character_this_line = 0;
+            TTF_MeasureString(font.font, string.data + cursor_character, m_selection_start - cursor_character, area.w, &cursor_pixel_x, &cursor_character_this_line);
 
-        cursor_character += cursor_character_this_line;
+            if (cursor_character_this_line == 0)
+            {
+                break;
+            }
 
-        cursor_line += 1;
+            cursor_character += cursor_character_this_line;
+
+            cursor_line += 1;
+        }
+
+        if (cursor_line)
+        {
+            cursor_line -= 1;  // 0 based indexing instead of 1 based indexing
+        }
+
+        int cursor_pixel_y = cursor_line * line_skip;
+
+        m_cursor_line = cursor_line;
+        m_cursor_pixel_x = cursor_pixel_x;
+        m_cursor_pixel_y = cursor_pixel_y;
     }
+    else {
+        TTF_MeasureString(font.font, string.data, m_selection_start, MAX_INTEGER, &cursor_pixel_x, nullptr);
 
-    if (cursor_line)
-        cursor_line -= 1;  // 0 based indexing instead of 1 based indexing
-
-    int cursor_pixel_y = cursor_line * line_skip;
-
-    m_cursor_line = cursor_line;
-    m_cursor_pixel_x = cursor_pixel_x;
-    m_cursor_pixel_y = cursor_pixel_y;
+        m_cursor_line = 0;
+        m_cursor_pixel_x = cursor_pixel_x;
+        m_cursor_pixel_y = 0;
+    }
 }
 
-size_t Text_Field::calculate_cursor_from_mouse(vec2 position, String string, Font font)
+size_t Text_Field::calculate_cursor_from_mouse(vec2 position, String string, Font font, bool wrapped)
 {
     int line_skip = TTF_GetFontLineSkip(font.font);
     Rectangle area = m_area;
@@ -158,26 +177,43 @@ size_t Text_Field::calculate_cursor_from_mouse(vec2 position, String string, Fon
 
     if (cursor_line >= line_count)
     {
+        m_cursor_line = m_line_count - 1;
         return m_buffer.length;
     }
 
     size_t cursor_character = 0;
     int pixel_x = 0;
-    int pixel_y = position.y - fmodf(position.y, line_skip);
+    int pixel_y = cursor_line * line_skip;
 
-    // calculate what the lines above us add up to in character count
-    // @todo which can maybe cached
-    for (int i = 0; i < cursor_line; i++)
+    if (wrapped)
     {
-        size_t cursor_character_this_line = 0;
+        // calculate what the lines above us add up to in character count
+        for (int i = 0; i < cursor_line; i++)
+        {
+            size_t cursor_character_this_line = 0;
 
-        TTF_MeasureString(font.font, string.data + cursor_character, string.size - cursor_character, area.w, nullptr, &cursor_character_this_line);
+            TTF_MeasureString(font.font, string.data + cursor_character, string.size - cursor_character, area.w, nullptr, &cursor_character_this_line);
 
-        cursor_character += cursor_character_this_line;
+            cursor_character += cursor_character_this_line;
+        }
     }
 
     size_t last_line_character = 0;
     TTF_MeasureString(font.font, string.data + cursor_character, string.size - cursor_character, position.x, &pixel_x, &last_line_character);
+
+    if (cursor_character + last_line_character < string.size)
+    {
+        int next_pixel_x = 0;
+
+        TTF_MeasureString(font.font, string.data + cursor_character, last_line_character + 1, area.w, &next_pixel_x, NULL);
+
+        if (position.x > (pixel_x + next_pixel_x) / 2)
+        {
+            last_line_character += 1;
+            pixel_x = next_pixel_x;
+        }
+    }
+
     cursor_character += last_line_character;
 
     m_cursor_line = cursor_line;
@@ -187,6 +223,52 @@ size_t Text_Field::calculate_cursor_from_mouse(vec2 position, String string, Fon
     return cursor_character;
 }
 
+bool Text_Field::render_text_field_texture(SDL_Renderer* renderer, Font font, Color color, bool wrapped)
+{
+    SDL_DestroyTexture(m_texture);  // old texture
+    m_texture = nullptr;
+
+    String str = get_string();
+    if (str.size == 0)
+    {
+        return true;
+    }
+
+    const SDL_Color text_color = {color.r, color.g, color.b, color.a};
+    SDL_Surface* text_surface;
+
+    if (wrapped) {
+        text_surface = TTF_RenderText_Solid_Wrapped(font.font, str.data, str.size, text_color, m_area.w);
+    } else {
+        text_surface = TTF_RenderText_Solid(font.font, str.data, str.size, text_color);
+    }
+
+    if (!text_surface)
+    {
+        return false;
+    }
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+    SDL_DestroySurface(text_surface);
+
+    if (!texture)
+    {
+        return false;
+    }
+
+    float texture_width, texture_height;
+    SDL_GetTextureSize(texture, &texture_width, &texture_height);
+    int line_skip = TTF_GetFontLineSkip(font.font);
+    int line_count = (wrapped) ? MAX(1, (int)(texture_height / line_skip)) : (1);
+
+    calculate_cursor_from_selection(str, font, wrapped);
+
+    m_line_count = line_count;
+    m_texture = texture;
+    m_font_size = font.size;
+
+    return true;
+}
 
 bool load_font(Font* font, String_Builder& path, String font_folder, String font_file, float size)
 {
@@ -222,7 +304,6 @@ bool load_font_file(Font* font, const char* path, float size)
 
 UiState::~UiState()
 {
-    text_field.reset();
     drop_down.reset();
     button.reset();
 
@@ -230,6 +311,14 @@ UiState::~UiState()
     {
         l.text.clear();
     }
+}
+
+Text_Field* UiState::get_selected_text_field()
+{
+    if (text_input_target == TEXT_INPUT_TARGET_SENTINEL)
+        return nullptr;
+    else
+        return text_field.get_ptr(text_input_target);
 }
 
 Text_Field& UiState::get_text_field(UiElementId id) {

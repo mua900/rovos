@@ -8,7 +8,6 @@
 #include <cstdarg>
 #include <array>
 
-#define IS_MAX_UNSIGNED(x) ((x)+1==0)
 #define BIT(x) ((uint64_t)1 << (x))
 
 typedef int8_t s8;
@@ -21,6 +20,11 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
+constexpr s16 MAX_SIGNED_16_BIT = s16(0x7FFF);
+constexpr s32 MAX_SIGNED_32_BIT = s32(0x7FFFFFFF);
+constexpr s64 MAX_SIGNED_64_BIT = s64(0x7FFFFFFFFFFFFFFF);
+
+constexpr int MAX_INTEGER = int(-1) ^ (1 << (sizeof(int) * 8 - 1));
 
 unsigned int pop_count(u64 x);
 

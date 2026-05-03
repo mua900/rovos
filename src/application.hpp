@@ -39,16 +39,21 @@ struct Event_Timeout {
     bool active = false;
 };
 
+#define NS_PER_SECONDS 1'000'000'000
+
 // about 11 and a half days
 #define EVENT_TIMEOUT_LONG 1000000.0
 
 enum Events {
     EVENT_DUMMY,
-    EVENT_MODE_CHANGE,
     EVENT_COUNT,
 };
 
-#define NS_PER_SECONDS 1'000'000'000
+enum Flags {
+    FLAG_MODE_CHANGE,
+    FLAG_TEXT_INPUT,
+    FLAG_COUNT,
+};
 
 class Application {
 public:
@@ -68,6 +73,7 @@ public:
     double m_time_seconds = 0;
 
     Event_Timeout m_events[EVENT_COUNT] = {};
+    bool flags[FLAG_COUNT];
 
     Array<Text> m_rendered_text = {};
 
@@ -88,8 +94,11 @@ private:
     void init_ui();
     bool load_assets();
 
+    UiState& get_active_ui();
+
     void timeout();
     void update_ui_state(vec2 window_size);
+
     void set_event_active(int event_index, double timeout_seconds);
     void set_event_deactive(int event_index);
 

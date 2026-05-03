@@ -141,6 +141,27 @@ bool Application::load_assets()
     return true;
 }
 
+UiState& Application::get_active_ui()
+{
+    if (m_mode == ModeMenu)
+    {
+        if (m_menu == MenuMain)
+        {
+            return m_ui[UiMainMenu];
+        }
+        else if (m_menu == MenuSettings)
+        {
+            return m_ui[UiSettings];
+        }
+    }
+    else if (m_mode == ModeGame)
+    {
+        return m_ui[UiGame];
+    }
+
+    panic("Invalid application state");
+}
+
 void Application::handle_events()
 {
     SDL_Event e = {};
@@ -181,6 +202,22 @@ void Application::handle_events()
                 int render_size_x, render_size_y;
                 SDL_GetRenderOutputSize(m_render.renderer, &render_size_x, &render_size_y);
                 m_render.render_size = vec2(render_size_x, render_size_y);
+                break;
+            }
+            case SDL_EVENT_TEXT_INPUT:
+            {
+                SDL_TextInputEvent text = e.text;
+                String input_text = make_string(text.text);
+
+                UiState& ui = get_active_ui();
+                Text_Field* text_field = ui.get_selected_text_field();
+                if (text_field)
+                {
+                    Font font = m_catalog.get_font(m_font);
+
+                    text_field->append_string(input_text);
+                    text_field->update_text(m_render.renderer, font, true);
+                }
                 break;
             }
             default:
@@ -235,16 +272,32 @@ bool Application::mouse_input_game()
     vec2 mouse_pos = m_input.mouse.pos;
     UiState& ui = m_ui[UiGame];
 
+    bool text_input_selected = false;
+    for (int it = 0; it < ui.text_field.size(); it++)
+    {
+        auto& field = ui.text_field.get_ref(it);
+        Rectangle area = field.m_area;
+        if (area.contains_centered(mouse_pos))
+        {
+            ui.text_input_target = it;
+        }
+    }
+
+    if (!text_input_selected)
+    {
+        ui.text_input_target = TEXT_INPUT_TARGET_SENTINEL;
+    }
+
     for (auto& button : ui.button) {
         Rectangle area = Rectangle(button.position, button.scale);
         if (area.contains_centered(mouse_pos)) {
             switch (button.id) {
-            case BackButton:
-            {
-                switch_modes(ModeMenu);
-                switch_menu(MenuMain);
-                break;
-            }
+                case BackButton:
+                {
+                    switch_modes(ModeMenu);
+                    switch_menu(MenuMain);
+                    break;
+                }
             }
         }
     }
@@ -321,6 +374,8 @@ void Application::update()
     m_time_seconds = time_sec;
 
     timeout();
+
+    flags[FLAG_MODE_CHANGE] = false;
 }
 
 void Application::timeout()
@@ -357,6 +412,8 @@ void Application::cleanup()
 
 void Application::init_ui()
 {
+    int a = int(-1) ^ int(1 << (sizeof(int) - 1));
+
     vec2 ws = get_window_size();
     vec2 button_scale = vec2(ws.x * 0.1, ws.y * 0.1);
     Font font = m_catalog.get_font(m_font);
@@ -372,7 +429,7 @@ void Application::init_ui()
     quit.id = QuitButton;
 
     Label back = Label(create_text(m_render.renderer, String("Back"), font, button_color), ws * 0.1, ws * 0.1, background);
-    Label backToMenu = Label(create_text(m_render.renderer, String("Main Menu"), font, button_color), ws * 0.1, ws * 0.1, background);
+    Label backToMenu = Label(create_text(m_render.renderer, String("Main Menu"), font, button_color), ws * 0.05, ws * 0.1, background);
     back.id = BackButton;
     backToMenu.id = BackButton;
 
@@ -382,7 +439,10 @@ void Application::init_ui()
 
     m_ui[UiSettings].button.add(back);
 
+    Rectangle editor_area = Rectangle(ws.x * 0.5, ws.y * 0.5, ws.x * 0.8, ws.y * 0.8);
+    Color editor_background = Color(0x66, 0x55, 0x66);
     m_ui[UiGame].button.add(backToMenu);
+    m_ui[UiGame].text_field.add(Text_Field(editor_area, editor_background, MainEditor));
 }
 
 void Application::draw()
@@ -486,7 +546,7 @@ void Application::draw_ui_state(const UiState& state)
 void Application::switch_modes(ApplicationMode mode) {
     if (m_mode != mode)
     {
-        set_event_active(EVENT_MODE_CHANGE, EVENT_TIMEOUT_LONG);
+        flags[FLAG_MODE_CHANGE] = true;
     }
     m_mode = mode;
 }
@@ -530,7 +590,7 @@ void Application::render_slider(Rectangle area, vec2 knob_scale, float value, Co
 
 void Application::render_text_field(const Text_Field& text_field)
 {
-    SDL_FRect tf_area = { text_field.m_area.x, text_field.m_area.y, text_field.m_area.w, text_field.m_area.h };
+    SDL_FRect tf_area = { text_field.m_area.x - text_field.m_area.w / 2, text_field.m_area.y - text_field.m_area.h / 2, text_field.m_area.w, text_field.m_area.h };
     SDL_SetRenderDrawColor(m_render.renderer, COLOR_ARG(text_field.background));
     SDL_RenderFillRect(m_render.renderer, &tf_area);
 

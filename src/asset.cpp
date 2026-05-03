@@ -4,7 +4,7 @@
 #include <SDL3_image/SDL_image.h>
 
 bool parse_image_attribute(String attribute, SDL_Texture*& texture);
-bool parse_audio_attribute(String attribute, MIX_Audio*& audio);
+bool parse_audio_attribute(String attribute, TrackId& audio);
 bool parse_font_attribute(String attribute, Font& font);
 bool parse_shader_attribute(String attribute, SDL_GPUShader*& shader);
 
@@ -208,7 +208,7 @@ bool parse_image_attribute(String attribute, SDL_Texture*& texture)
     return false;
 }
 
-bool parse_audio_attribute(String attribute, MIX_Audio*& audio)
+bool parse_audio_attribute(String attribute, TrackId& audio)
 {
     return false;
 }
@@ -386,7 +386,14 @@ bool load_asset(String_Builder& path, Asset& asset, AssetLoadContext& load_conte
             return true;
         }
         case ASSET_KIND_AUDIO: {
-            panic("No audio support yet for this application");
+            TrackId track = load_context.audio_player->add_track(path.c_string());
+            if (track == NullTrackId)
+            {
+                asset.identifier.id = -1;
+                return false;
+            }
+
+            asset.data.audio = track;
 
             return true;
         }
@@ -402,6 +409,7 @@ bool load_asset(String_Builder& path, Asset& asset, AssetLoadContext& load_conte
         }
         case ASSET_KIND_SHADER: {
             // @todo
+            panic("No shaders yet");
             return false;
         }
         default: {

@@ -1,3 +1,10 @@
 # font
+# @todo different sizes
 font file FiraSans font/Fira_Sans/FiraSans-Regular.ttf size=32
 font file FiraCode font/Fira_Code/FiraCode-Regular.ttf size=32
+
+# icons
+image folder Icons icon optional
+
+# vehicles
+image file Rover vehicle/rover.svg

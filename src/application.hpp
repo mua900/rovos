@@ -50,6 +50,7 @@ public:
 
     Window m_window = {};
     RenderContext m_render = {};
+    AudioPlayer m_audio_player = {};
     Input m_input = {};
     AssetCatalog m_catalog = {};
 

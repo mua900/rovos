@@ -304,3 +304,263 @@ template<typename T, int N>
 Array<T> make_array(T (&arr)[N]) {
 	return Array<T>(arr, N);
 }
+
+template<typename T>
+struct BucketList {
+	static const int BUCKET_SIZE = 32;
+	static const u32 BUCKET_FLAGS_FULL = 0xFFFFFFFF;  // match the bucket size in the number of bits
+	struct Bucket {
+		T elements[BUCKET_SIZE];
+		uint32_t occupied_flags;  // at least as many bits as bucket size
+	};
+
+	// due to the fact that the dynamic array can relocate, the pointers are not stable but slot ids are
+	DArray<Bucket> buckets;
+
+	int count() const
+	{
+		int total = 0;
+		for (const auto& bucket : buckets)
+		{
+			total += pop_count(bucket.occupied_flags);
+		}
+
+		return total;
+	}
+
+	int add(const T& elem)
+	{
+		int bucket_index = 0;
+		for (auto& bucket : buckets)
+		{
+			auto flags = bucket.occupied_flags;
+			if (flags == BUCKET_FLAGS_FULL)
+			{
+				bucket_index += 1;
+				continue;
+			}
+
+			u16 inverse_flags = ~flags;
+			int index = lsb_index(inverse_flags);
+			bucket.elements[index] = elem;
+			bucket.occupied_flags |= BIT(index);
+
+			return bucket_index * BUCKET_SIZE + index;
+		}
+
+		int new_bucket_index = buckets.add(Bucket());
+		buckets.get_ref(new_bucket_index).elements[0] = elem;
+		buckets.get_ref(new_bucket_index).occupied_flags |= BIT(0);
+		return new_bucket_index * BUCKET_SIZE + 0;
+	}
+
+	void remove(int elem_index)
+	{
+		int bucket_index = elem_index / BUCKET_SIZE;
+		int index = elem_index % BUCKET_SIZE;
+
+		buckets.get_ref(bucket_index).occupied_flags &= ~BIT(index);
+	}
+
+	T& get(int elem_index)
+	{
+		int bucket_index = elem_index / BUCKET_SIZE;
+		int index = elem_index % BUCKET_SIZE;
+
+		return buckets.get_ref(bucket_index).elements[index];
+	}
+
+	struct Iterator {
+		BucketList<T>* list = {};
+		int bucket_index = 0;
+		int slot_index = 0;
+
+		void next()
+		{
+			for (int i = bucket_index; i < list->buckets.size(); i++)
+			{
+				Bucket& bucket = list->buckets.get_ref(i);
+				auto flags = bucket.occupied_flags;
+				flags &= BUCKET_FLAGS_FULL << (slot_index + 1);  // ignore flags before the point we are looking
+				if (flags != 0)
+				{
+					int index = lsb_index(flags);
+
+					bucket_index = i;
+					slot_index = index;
+					return;
+				}
+				else
+				{
+					slot_index = 0;
+				}
+			}
+
+			bucket_index = list->buckets.size();
+		}
+
+		Iterator& operator++() {
+			next();
+			return *this;
+		}
+
+		T& operator*() {
+			return list->buckets.get_ref(bucket_index).elements[slot_index];
+		}
+
+		bool operator!=(const Iterator& other) const {
+			return bucket_index != other.bucket_index || slot_index != other.slot_index;
+		}
+	};
+
+	Iterator begin()
+	{
+		Iterator it = { this, 0, -1 };
+		it.next();
+		return it;
+	}
+
+	Iterator end()
+	{
+		return { this, buckets.size(), 0 };
+	}
+
+	struct ConstIterator {
+		const BucketList<T>* list = {};
+		int bucket_index = 0;
+		int slot_index = 0;
+
+		void next()
+		{
+			for (int i = bucket_index; i < list->buckets.size(); i++)
+			{
+				const Bucket& bucket = list->buckets.get_ref(i);
+				auto flags = bucket.occupied_flags;
+				flags &= BUCKET_FLAGS_FULL << (slot_index + 1);  // ignore flags before the point we are looking
+				if (flags != 0)
+				{
+					int index = lsb_index(flags);
+
+					bucket_index = i;
+					slot_index = index;
+					return;
+				}
+				else
+				{
+					slot_index = 0;
+				}
+			}
+
+			bucket_index = list->buckets.size();
+		}
+
+		ConstIterator& operator++() {
+			next();
+			return *this;
+		}
+
+		const T& operator*() const {
+			return list->buckets.get_ref(bucket_index).elements[slot_index];
+		}
+
+		bool operator!=(const ConstIterator& other) const {
+			return bucket_index != other.bucket_index || slot_index != other.slot_index;
+		}
+	};
+
+	ConstIterator begin() const
+	{
+		ConstIterator it = { this, 0, -1 };
+		it.next();
+		return it;
+	}
+
+	ConstIterator end() const
+	{
+		return { this, buckets.size(), 0 };
+	}
+};
+
+template<typename T>
+struct HashTable {
+	struct Entry {
+		int empty = 0;  // 0 is empty
+		String key = {};
+		T value;
+
+		Entry() {}
+		Entry(String k, T& v) : key(k), value(v) {}
+	};
+
+	HashTable() { make(31); }
+	HashTable(int size) { make(size); }
+
+	void make(int size) {
+		entries.resize(size);
+	}
+
+	bool add(String key, T& value)
+	{
+		const char* end = buffer.get_end();
+		int size = buffer.append(key);
+		String k = String(end, size);
+
+		int num_slot = entries.size();
+		u64 hash = string_hash(key);
+		int slot = hash % num_slot;
+		Entry* entry = entries.get_ptr(slot);
+		int total = 0;
+		while (entry && total < num_slot)
+		{
+			if (entry->empty == 0)
+			{
+				entry->key = k;
+				entry->value = value;
+				entry->empty = 1;
+				return true;
+			}
+
+			// if (string_compare(entry->key, key)) { log_error("Non unique insertions to hash table"); }
+
+			const int step = 1;
+			slot = (slot + step) % num_slot;
+			total += step;
+			entry = entries.get_ptr(slot);
+		}
+
+		return false;
+	}
+
+	T* find(String key)
+	{
+		u64 hash = string_hash(key);
+		int num_slot = entries.size();
+		int slot = hash % num_slot;
+		Entry* entry = entries.get_ptr(slot);
+
+		int total = 0;
+		while (entry && total < num_slot)
+		{
+			if (entry->empty == 0)
+			{
+				return nullptr;
+			}
+
+			if (string_compare(entry->key, key))
+			{
+				return &entry->value;
+			}
+
+			const int step = 1;
+			slot = (slot + step) % num_slot;
+			total += step;
+			entry = entries.get_ptr(slot);
+		}
+
+		return nullptr;
+	}
+
+private:
+	String_Builder buffer;
+	DArray<Entry> entries;
+};

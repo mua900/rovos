@@ -1,5 +1,6 @@
 #include "audio.hpp"
 #include "common.hpp"
+#include "log.hpp"
 
 #include <cmath>
 
@@ -15,7 +16,7 @@ bool AudioPlayer::create() {
     MIX_Mixer* mix_mixer = MIX_CreateMixerDevice(sdl_device, nullptr);
     if (!mix_mixer)
     {
-        fprintf(stderr, "Couldn't create MIX_Mixer object: %s\n", SDL_GetError());
+        log_error("Couldn't create MIX_Mixer object: %s\n", SDL_GetError());
         return false;
     }
 
@@ -28,12 +29,12 @@ void AudioPlayer::cleanup() {
     MIX_DestroyMixer(mixer);
 }
 
-MIX_Audio* AudioPlayer::load_audio(const char* path)
+MIX_Audio* AudioPlayer::load_audio(const char* path) const
 {
     return MIX_LoadAudio(mixer, path, true);
 }
 
-TrackId AudioPlayer::add_track(const char* path, const char* track_tag)
+TrackId AudioPlayer::add_track(const char* path)
 {
     MIX_Audio* audio = MIX_LoadAudio(mixer, path, true);
     if (!audio)
@@ -41,10 +42,10 @@ TrackId AudioPlayer::add_track(const char* path, const char* track_tag)
         return NullTrackId;
     }
 
-    return make_track(audio, track_tag);
+    return make_track(audio);
 }
 
-TrackId AudioPlayer::make_track(MIX_Audio* audio, const char* track_tag)
+TrackId AudioPlayer::make_track(MIX_Audio* audio)
 {
     MIX_Track* track = MIX_CreateTrack(mixer);
     if (!track)
@@ -53,7 +54,6 @@ TrackId AudioPlayer::make_track(MIX_Audio* audio, const char* track_tag)
     }
 
     MIX_SetTrackAudio(track, audio);
-    MIX_TagTrack(track, track_tag);
 
     return tracks.add(track);
 }

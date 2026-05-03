@@ -111,6 +111,7 @@ bool Application::read_asset_catalog(String_Builder& path)
     bool parse_description = parse_assets(path.c_string(), m_catalog);
 
     m_catalog.load_context.render = &m_render;
+    m_catalog.load_context.audio_player = &m_audio_player;
 
     return parse_description;
 }

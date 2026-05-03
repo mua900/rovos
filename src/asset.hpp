@@ -26,7 +26,8 @@ struct AssetId {
 static const AssetId NullAssetId = AssetId {-1, 0};
 
 struct AssetLoadContext {
-    const RenderContext* render;
+    RenderContext* render;
+    AudioPlayer* audio_player;
 };
 
 // resource types
@@ -49,7 +50,7 @@ struct Asset {
     union {
         Font font;
         SDL_Texture* image;
-        MIX_Audio* audio;
+        TrackId audio;
         SDL_GPUShader* shader;
     } data = {};
 
@@ -103,17 +104,17 @@ struct AssetCatalog {
         return asset.data.font;
     }
 
-    const MIX_Audio* get_audio(AssetId id)
+    const TrackId get_audio(AssetId id)
     {
         if (!id.is_valid())
         {
-            return nullptr;
+            return NullTrackId;
         }
 
         const Asset& asset = assets.get_ref(id.id);
         if (asset.kind != ASSET_KIND_AUDIO || asset.identifier.generation != id.generation)
         {
-            return nullptr;
+            return NullTrackId;
         }
 
         return asset.data.audio;

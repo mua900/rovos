@@ -76,6 +76,9 @@ void panic(char const* const msg);
 int pop_lsb(u64* x);
 int pop_msb(u64* x);
 
+int lsb_index(u64 x);
+int msb_index(u64 x);
+
 struct BinaryData {
 	u8* data = nullptr;
 	size_t size = 0;
@@ -144,6 +147,7 @@ String string_slice(String s, int start, int end);
 String string_slice_to_character(String s, int start, char c);
 String string_get_extension(String s);
 String string_copy(String s);
+u64 string_hash(String s);
 
 int string_to_integer(String s, bool* success);
 double string_to_real(String s, bool* success);
@@ -232,6 +236,7 @@ struct String_Builder {
         }
     }
 
+    const char* get_end() const { return buffer + cursor; }
     void create(int initial_capacity);
     int append(String string);
     int append_path(String string);  // expect / as the separator and replace it with \\ on windows

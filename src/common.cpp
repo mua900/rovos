@@ -34,6 +34,14 @@ int pop_msb(u64* x) {
     return index;
 }
 
+int lsb_index(u64 x) {
+    return TRAILING_ZEROS(x);
+}
+
+int msb_index(u64 x) {
+    return 63 - LEADING_ZEROS(x);
+}
+
 int string_length(const char* cstr) {
     return (int)strlen(cstr);
 }
@@ -139,6 +147,19 @@ String string_copy(String s)
     memcpy(data, s.data, s.size);
     data[s.size] = '\0';
     return { data, s.size };
+}
+
+u64 string_hash(String s)
+{
+    u64 hash = 5383;
+
+    for (int i = 0; i < s.size; i++)
+    {
+        int c = s.data[i];
+        hash = ((hash << 5) + hash) + c;
+    }
+
+    return hash;
 }
 
 int string_to_integer(String s, bool* success)

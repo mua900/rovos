@@ -232,31 +232,35 @@ bool Application::mouse_input()
 
 bool Application::mouse_input_game()
 {
+    vec2 mouse_pos = m_input.mouse.pos;
+    UiState& ui = m_ui[UiGame];
+
+    for (auto& button : ui.button) {
+        Rectangle area = Rectangle(button.position, button.scale);
+        if (area.contains_centered(mouse_pos)) {
+            switch (button.id) {
+            case BackButton:
+            {
+                switch_modes(ModeMenu);
+                switch_menu(MenuMain);
+                break;
+            }
+            }
+        }
+    }
+
     return false;
 }
 
 bool Application::mouse_input_menu()
 {
+    return (m_menu == MenuMain) ? mouse_input_main_menu() : mouse_input_settings();
+}
+
+bool Application::mouse_input_main_menu()
+{
     vec2 mouse_pos = m_input.mouse.pos;
-
-    UiState& ui = m_ui[ModeMenu];
-    for (auto& tf : ui.text_field)
-    {
-        if (tf.m_area.contains_centered(mouse_pos)) {
-            // @todo
-        }
-    }
-
-    for (auto& dd : ui.drop_down) {
-        Rectangle area = Rectangle(dd.pos, dd.scale);
-        if (area.contains_top_left(mouse_pos)) {
-            // @todo
-        }
-
-        if (dd.open) {
-            // @todo
-        }
-    }
+    UiState& ui = m_ui[UiMainMenu];
 
     for (auto& button : ui.button) {
         Rectangle area = Rectangle(button.position, button.scale);
@@ -272,6 +276,27 @@ bool Application::mouse_input_menu()
                 }
                 case QuitButton: {
                     quit = true;  // quit at the end of frame
+                    break;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+bool Application::mouse_input_settings()
+{
+    vec2 mouse_pos = m_input.mouse.pos;
+    UiState& ui = m_ui[UiSettings];
+
+    for (auto& button : ui.button) {
+        Rectangle area = Rectangle(button.position, button.scale);
+        if (area.contains_centered(mouse_pos)) {
+            switch (button.id) {
+                case BackButton:
+                {
+                    switch_menu(MenuMain);
                     break;
                 }
             }
@@ -346,9 +371,18 @@ void Application::init_ui()
     Label quit = Label(create_text(m_render.renderer, String("Quit"), font, button_color), vec2(ws.x * 0.5, ws.y * 0.8), button_scale, background);
     quit.id = QuitButton;
 
-    m_ui[ModeMenu].button.add(play);
-    m_ui[ModeMenu].button.add(settings);
-    m_ui[ModeMenu].button.add(quit);
+    Label back = Label(create_text(m_render.renderer, String("Back"), font, button_color), ws * 0.1, ws * 0.1, background);
+    Label backToMenu = Label(create_text(m_render.renderer, String("Main Menu"), font, button_color), ws * 0.1, ws * 0.1, background);
+    back.id = BackButton;
+    backToMenu.id = BackButton;
+
+    m_ui[UiMainMenu].button.add(play);
+    m_ui[UiMainMenu].button.add(settings);
+    m_ui[UiMainMenu].button.add(quit);
+
+    m_ui[UiSettings].button.add(back);
+
+    m_ui[UiGame].button.add(backToMenu);
 }
 
 void Application::draw()
@@ -391,7 +425,14 @@ void Application::draw_ui()
     switch (m_mode)
     {
         case ModeMenu: {
-            draw_menu_ui();
+            switch (m_menu)
+            {
+                case MenuMain:
+                    draw_main_menu();
+                    break;
+                case MenuSettings:
+                    draw_settings_menu();
+            }
             break;
         }
         case ModeGame: {
@@ -404,14 +445,19 @@ void Application::draw_ui()
     }
 }
 
-void Application::draw_menu_ui()
+void Application::draw_main_menu()
 {
-    draw_ui_state(m_ui[ModeMenu]);
+    draw_ui_state(m_ui[UiMainMenu]);
+}
+
+void Application::draw_settings_menu()
+{
+    draw_ui_state(m_ui[UiSettings]);
 }
 
 void Application::draw_game_ui()
 {
-    // @todo
+    draw_ui_state(m_ui[UiGame]);
 }
 
 void Application::draw_ui_state(const UiState& state)

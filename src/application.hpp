@@ -23,6 +23,13 @@ enum MenuName {
     MenuSettings,
 };
 
+enum UiStates {
+    UiMainMenu,
+    UiSettings,
+    UiGame,
+    UiCount,
+};
+
 struct Window {
     SDL_Window* window;
 };
@@ -54,7 +61,7 @@ public:
     Input m_input = {};
     AssetCatalog m_catalog = {};
 
-    UiState m_ui[ModeCount];
+    UiState m_ui[UiCount];
     Color m_background_color = DEFAULT_BACKGROUND_COLOR;
 
     s64 m_time = 0;
@@ -89,7 +96,8 @@ private:
     void draw_game();
 	void draw_ui();
 
-    void draw_menu_ui();
+    void draw_main_menu();
+    void draw_settings_menu();
     void draw_game_ui();
 
     void draw_ui_state(const UiState& state);
@@ -97,6 +105,8 @@ private:
     bool mouse_input();
     bool mouse_input_game();
     bool mouse_input_menu();
+    bool mouse_input_main_menu();
+    bool mouse_input_settings();
 
     void update_keyboard_state();
     bool keyboard_input(SDL_KeyboardEvent keyboard);

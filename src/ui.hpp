@@ -51,6 +51,7 @@ enum UiElementId {
     PlayButton,
     SettingsButton,
     QuitButton,
+    BackButton,
 };
 
 struct Label {

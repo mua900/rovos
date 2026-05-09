@@ -2,49 +2,17 @@
 #define _UI_H
 
 #include <SDL3/SDL.h>
-#include <SDL3_ttf/SDL_ttf.h>
 
 #include "common.hpp"
 #include "template.hpp"
 #include "math_util.hpp"
+#include "asset.hpp"
+#include "text.hpp"
 
 #define INIT_WINDOW_WIDTH  1440.0f
 #define INIT_WINDOW_HEIGHT 810.0f
 
 #define DEFAULT_BACKGROUND_COLOR Color{ 0x88, 0x33, 0x66, 0xff }
-
-#define FONT_SIZE_SMALL   18.0
-#define FONT_SIZE_MEDIUM  32.0
-#define FONT_SIZE_LARGE   72.0
-#define FONT_SIZE_EDITOR  24.0
-
-struct Font {
-    TTF_Font* font = NULL;
-    float size = 0;
-};
-
-bool load_font(Font* font, String_Builder& path, String font_folder, String font_file, float size);
-bool load_font_file(Font* font, const char* path, float size);
-
-struct Text {
-    SDL_Texture* texture = NULL;
-    String string = {};
-
-    Text() {}
-    Text(SDL_Texture* p_texture, String p_string) : texture(p_texture), string(p_string) {}
-
-    void clear()
-    {
-        if (texture)
-        {
-            SDL_DestroyTexture(texture);
-            texture = nullptr;
-        }
-
-        string.data = NULL;
-        string.size = 0;
-    }
-};
 
 enum UiElementId {
     UiElementSentinel = 0,
@@ -74,8 +42,32 @@ struct GapBuffer {
     int end_gap = 0;
 
     GapBuffer() {
-        initialize(256);
+        initialize(32);
     }
+
+    GapBuffer(GapBuffer& other) = delete;
+    void operator=(GapBuffer& other) = delete;
+    GapBuffer(GapBuffer&& other) noexcept {
+        if (buffer) { std::free(buffer); }
+        buffer = other.buffer;
+        buffer_size = other.buffer_size;
+        length = other.length;
+        gap_index = other.gap_index;
+        end_gap = other.end_gap;
+
+        other.clear_values();
+    }
+    void operator=(GapBuffer&& other) noexcept {
+        if (buffer) { std::free(buffer); }
+        buffer = other.buffer;
+        buffer_size = other.buffer_size;
+        length = other.length;
+        gap_index = other.gap_index;
+        end_gap = other.end_gap;
+
+        other.clear_values();
+    }
+
     ~GapBuffer() {
         reset();
     }
@@ -89,6 +81,14 @@ struct GapBuffer {
     void get_string(String_Builder& sb);
 
     void reset();
+private:
+    void clear_values() {
+        buffer = nullptr;
+        length = 0;
+        gap_index = 0;
+        end_gap = 0;
+        buffer_size = 0;
+    }
 };
 
 enum Text_Input_Target : u8 {
@@ -104,11 +104,13 @@ struct Text_Field
 
     GapBuffer m_buffer = {};
     String_Builder m_text = {};
+    AssetId fontId = {};
     int m_cursor_pixel_x = 0;
     int m_cursor_pixel_y = 0;
     int m_cursor_line = 0;
     int m_line_count = 0;
 
+    // character indexes for start and end of the selection region
     int m_selection_start = 0;
     int m_selection_end = 0;
 
@@ -117,14 +119,16 @@ struct Text_Field
 
     Text_Field() {}
 
-    Text_Field(Rectangle area, Color background_color)
+    Text_Field(Rectangle area, AssetId font, Color background_color)
     {
+        fontId = font;
         background = background_color;
         m_area = area;
     }
 
-    Text_Field(Rectangle area, Color background_color, UiElementId ident) : id(ident)
+    Text_Field(Rectangle area, AssetId font, Color background_color, UiElementId ident) : id(ident)
     {
+        fontId = font;
         background = background_color;
         m_area = area;
     }
@@ -224,6 +228,9 @@ struct Text_Field
         delete_text();
     }
 
+    void insert_tab(int tab_width);
+    void insert_line();
+
     void set_text_input_area(SDL_Window* window, int line_skip)
     {
         const SDL_Rect area = { int(m_area.x), int(m_area.y) + m_cursor_line * line_skip, int(m_area.w), line_skip};
@@ -237,10 +244,18 @@ private:
     bool render_text_field_texture(SDL_Renderer* renderer, Font font, Color color, bool wrapped);
 };
 
-struct Editor {
-    Text_Field field;
-    MutableString name;
+struct TextEditor {
+    Text_Field field = {};
+    MutableString name = {};
+    SDL_Texture* title_texture = nullptr;  // normally rendered name but can be anything or empty
+    Color title_color = Color();
+    Color title_bar_color = Color();
 
+    TextEditor() {}
+    TextEditor(Rectangle area, AssetId font, Color background_color, String editor_name) : field(area, font, background_color), name(editor_name)
+    {}
+    TextEditor(UiElementId ident, Rectangle area, AssetId font, Color background_color, Color titleColor, Color titleBarColor, String editor_name) : field(area, font, background_color, ident), name(editor_name), title_color(titleColor), title_bar_color(titleBarColor)
+    {}
 };
 
 #define DROP_DOWN_LIST_SELECTED_SENTINEL -1
@@ -339,6 +354,7 @@ struct Drop_Down_List {
 static const int TEXT_INPUT_TARGET_SENTINEL = -1;
 
 struct UiState {
+    DArray<TextEditor> editor;
     DArray<Text_Field> text_field;
     DArray<Drop_Down_List> drop_down;
     DArray<Label> button;
@@ -348,6 +364,7 @@ struct UiState {
 
     Text_Field* get_selected_text_field();
 
+    TextEditor& get_editor(UiElementId id);
     Text_Field& get_text_field(UiElementId id);
     Drop_Down_List& get_drop_down(UiElementId id);
     Label& get_button(UiElementId id);

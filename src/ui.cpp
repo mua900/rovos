@@ -1,14 +1,16 @@
 #include "ui.hpp"
+#include "log.hpp"
 
 void GapBuffer::initialize(int init_buffer_size) {
-    buffer = new char[init_buffer_size];
+    buffer = (char*) std::malloc(init_buffer_size);
     buffer_size = init_buffer_size;
     gap_index = 0;
     end_gap = init_buffer_size;
+    length = 0;
 }
 
 void GapBuffer::reset() {
-    delete[] buffer;
+    std::free(buffer);
     buffer = nullptr;
     buffer_size = 0;
     length = 0;
@@ -87,7 +89,7 @@ void GapBuffer::move_gap(int position)
         dest = gap_index;
     }
 
-    memmove(buffer + dest, buffer + start, amount);
+    std::memmove(buffer + dest, buffer + start, amount);
 
     int gap_size = end_gap - gap_index;
     gap_index = position;
@@ -103,10 +105,11 @@ void GapBuffer::resize(int size)
     int start_chars = gap_index;
     int end_chars = buffer_size - end_gap;
 
-    char* nbuffer = new char[size];
-    memcpy(nbuffer, buffer, start_chars);
-    memcpy(nbuffer + (size - end_chars), buffer + end_gap, end_chars);
-    delete[] buffer;
+    char* nbuffer = (char*) std::malloc(size);
+    ASSERT(nbuffer);
+    std::memcpy(nbuffer, buffer, start_chars);
+    std::memcpy(nbuffer + (size - end_chars), buffer + end_gap, end_chars);
+    std::free(buffer);
 
     buffer = nbuffer;
     end_gap = size - end_chars;
@@ -126,23 +129,44 @@ void Text_Field::calculate_cursor_from_selection(String string, Font font, bool 
     // calculate cursor position
     int cursor_line = 0;
     int cursor_pixel_x = 0;
-    size_t cursor_character = 0;
+    size_t cursor_byte = 0;
 
     Rectangle area = m_area;
 
     if (wrapped)
     {
-        while (cursor_character < m_selection_start)
+        while (cursor_byte < m_selection_start)
         {
+            size_t to_next_newline = 0;
             size_t cursor_character_this_line = 0;
-            TTF_MeasureString(font.font, string.data + cursor_character, m_selection_start - cursor_character, area.w, &cursor_pixel_x, &cursor_character_this_line);
+
+            // measure distance to linebreak
+            while (cursor_byte + to_next_newline < m_selection_start && string.data[cursor_byte + to_next_newline] != '\n') {
+                to_next_newline += 1;
+            }
+
+            if (to_next_newline == 0) {
+                // a line that is just a newline character
+                cursor_byte += 1;
+                cursor_line += 1;
+            }
+
+            if (string.data[cursor_byte + to_next_newline] == '\n') {
+                to_next_newline += 1;  // skip the newline character as well. It is not rendered and don't leave the cursor on it because then it will cause the loop to break
+            }
+
+            // measure distance to end of text render area
+            TTF_MeasureString(font.font, string.data + cursor_byte, m_selection_start - cursor_byte, area.w, &cursor_pixel_x, &cursor_character_this_line);
+
+            // take the minimum
+            cursor_character_this_line = MIN(cursor_character_this_line, to_next_newline);
 
             if (cursor_character_this_line == 0)
             {
                 break;
             }
 
-            cursor_character += cursor_character_this_line;
+            cursor_byte += cursor_character_this_line;
 
             cursor_line += 1;
         }
@@ -269,6 +293,37 @@ bool Text_Field::render_text_field_texture(SDL_Renderer* renderer, Font font, Co
 
     return true;
 }
+
+void Text_Field::insert_tab(int tab_width)
+{
+    if (tab_width > 16)
+    {
+        tab_width = 16;
+        log_warning("Tab width set to larger than 16");
+    }
+
+    char buffer[16] = {};
+    for (int i = 0; i < tab_width; i++)
+    {
+        buffer[i] = ' ';
+    }
+
+    delete_text();
+    m_buffer.append(String(buffer, tab_width), m_selection_start);
+
+    m_selection_start += 1;
+    m_selection_end = m_selection_start;
+}
+
+void Text_Field::insert_line()
+{
+    delete_text();
+    m_buffer.append(String("\n"), m_selection_start);
+
+    m_selection_start += 1;
+    m_selection_end = m_selection_start;
+}
+
 
 bool load_font(Font* font, String_Builder& path, String font_folder, String font_file, float size)
 {

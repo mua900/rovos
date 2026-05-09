@@ -25,6 +25,7 @@ add_executable(game
 	src/input.cpp
 	src/ui.hpp
 	src/ui.cpp
+	src/text.hpp
 	src/asset.hpp
 	src/asset.cpp
 	src/draw.hpp

@@ -137,18 +137,6 @@ String string_get_extension(String s)
     return String{NULL,0};
 }
 
-String string_copy(String s)
-{
-    char* data = (char*)malloc(s.size + 1);
-    if (!data)
-    {
-        panic("Malloc fail");
-    }
-    memcpy(data, s.data, s.size);
-    data[s.size] = '\0';
-    return { data, s.size };
-}
-
 u64 string_hash(String s)
 {
     u64 hash = 5383;
@@ -187,7 +175,7 @@ double string_to_real(String s, bool* success)
 {
     char* end_ptr = NULL;
     SCOPE_STRING(s, cstr);
-    double res = strtod(cstr, &end_ptr);
+    double res = std::strtod(cstr, &end_ptr);
     if (end_ptr == cstr)
     {
         if (success)
@@ -201,15 +189,15 @@ double string_to_real(String s, bool* success)
 }
 
 long get_file_size(FILE* file) {
-	long pos = ftell(file);
-	fseek(file, 0, SEEK_END);
-	long len = ftell(file);
-	fseek(file, 0, SEEK_SET);
+	long pos = std::ftell(file);
+    std::fseek(file, 0, SEEK_END);
+	long len = std::ftell(file);
+    std::fseek(file, 0, SEEK_SET);
 	return len;
 }
 
 bool load_file(const char* filepath, BinaryData& data) {
-	FILE* handle = fopen(filepath, "r");
+	FILE* handle = std::fopen(filepath, "r");
     if (!handle)
     {
         return false;
@@ -217,18 +205,18 @@ bool load_file(const char* filepath, BinaryData& data) {
 
 	auto filesize = get_file_size(handle);
 
-	u8* mem = (u8*) malloc(filesize);
+	u8* mem = (u8*) std::malloc(filesize);
 	if (!mem) {
 		panic("malloc fail");
 	}
 
-	size_t written = fread(mem, sizeof(u8), filesize, handle);
+	size_t written = std::fread(mem, sizeof(u8), filesize, handle);
 	if (filesize != written) {
-		free(mem);
+        std::free(mem);
 		return false;
 	}
 
-	fclose(handle);
+    std::fclose(handle);
 
 	data.data = mem;
 	data.size = filesize;
@@ -328,21 +316,19 @@ void String_Builder::remove_slice(int start, int end)
     if (end >= cursor)
         end = cursor;
 
-    for (int i = end; i < cursor; i++)
-    {
-        buffer[start + i] = buffer[i];
-    }
+    int amount = cursor - end;
+    std::memmove(buffer + start, buffer + end, amount);
 
     cursor -= (end - start);
 }
 
 void String_Builder::resize() {
-    char* nbuff = (char*)malloc(buffer_capacity * 2 * sizeof(char));
+    char* nbuff = (char*) malloc(buffer_capacity * 2);
     if (!nbuff) panic("Malloc fail");
     if (buffer)
     {
-        memcpy(nbuff, buffer, cursor);
-        free(buffer);
+        std::memcpy(nbuff, buffer, cursor);
+        std::free(buffer);
     }
     buffer = nbuff;
     buffer_capacity *= 2;
@@ -367,7 +353,7 @@ int String_Builder::ensure_size(int size) {
 int String_Builder::append(String string) {
     ensure_size(cursor + string.size);
 
-    memcpy(buffer + cursor, string.data, string.size);
+    std::memcpy(buffer + cursor, string.data, string.size);
     cursor += string.size;
     return string.size;
 }
@@ -435,7 +421,7 @@ int String_Builder::append_many(String* strings, int n) {
 
     ensure_size(this->cursor + total_length);
     for (int i = 0; i < n; i++) {
-        memcpy(this->buffer + this->cursor, strings[i].data, strings[i].size);
+        std::memcpy(this->buffer + this->cursor, strings[i].data, strings[i].size);
         cursor += strings[i].size;
     }
 
@@ -448,7 +434,7 @@ const char* String_Builder::c_string() {
 }
 
 void String_Builder::free_buffer() {
-    free(this->buffer);
+    std::free(this->buffer);
     cursor = 0;
     buffer_capacity = 0;
     buffer = NULL;
@@ -482,26 +468,6 @@ void String::trim() {
 		size--;
 		data++;
 	}
-}
-
-void String::print(bool newline) const
-{
-    int size_nt = size + 1;
-    char* mem = (char*)malloc(size_nt);
-    if (!mem)
-    {
-        panic("Malloc fail");
-    }
-    memcpy(mem, data, size);
-    mem[size] = '\0';
-    if (newline)
-    {
-        printf("%s\n", mem);
-    }
-    else {
-        printf("%s", mem);
-    }
-    free(mem);
 }
 
 bool String::operator==(const String& other) const

@@ -386,7 +386,7 @@ bool load_asset(String_Builder& path, Asset& asset, AssetLoadContext& load_conte
             return true;
         }
         case ASSET_KIND_AUDIO: {
-            TrackId track = load_context.audio_player->add_track(path.c_string());
+            TrackId track = load_context.audio->add_track(path.c_string());
             if (track == NullTrackId)
             {
                 asset.identifier.id = -1;

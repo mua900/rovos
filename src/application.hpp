@@ -49,12 +49,6 @@ enum Events {
     EVENT_COUNT,
 };
 
-enum Flags {
-    FLAG_MODE_CHANGE,
-    FLAG_TEXT_INPUT,
-    FLAG_COUNT,
-};
-
 class Application {
 public:
     ApplicationMode m_mode = ModeMenu;
@@ -73,7 +67,6 @@ public:
     double m_time_seconds = 0;
 
     Event_Timeout m_events[EVENT_COUNT] = {};
-    bool flags[FLAG_COUNT];
 
     Array<Text> m_rendered_text = {};
 
@@ -125,7 +118,6 @@ private:
     void text_input_start();
     void text_input_stop();
     void toggle_text_input();
-    bool update_input_string();
 
     bool read_asset_catalog(String_Builder& path);
 
@@ -138,6 +130,7 @@ private:
 
     void render_slider(Rectangle area, vec2 knob_scale, float value, Color slider_color, Color knob_color, const Text& text);
     void render_text_field(const Text_Field& text_field);
+    void render_text_editor(const TextEditor& editor);
     void render_dropdown(const Drop_Down_List& list);
 
     void clear_text_input_selection();

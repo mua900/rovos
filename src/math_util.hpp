@@ -158,12 +158,18 @@ struct Rectangle {
 
     bool contains_top_left(vec2 p) const;
     bool contains_centered(vec2 p) const;
-    // the current rectangle assumes center be the origin so shift it to be the top left corner
     Rectangle to_top_left() const {
         return Rectangle(x - w / 2, y - h / 2, w, h);
     }
     Rectangle to_center() const {
         return Rectangle(x + w / 2, y + h / 2, w, h);
+    }
+
+    vec2 get_top_left() const {
+        return vec2(x - w / 2, y - h / 2);
+    }
+    vec2 get_center() const {
+        return vec2(x + w / 2, y +h / 2);
     }
 };
 

@@ -111,7 +111,7 @@ bool Application::read_asset_catalog(String_Builder& path)
     bool parse_description = parse_assets(path.c_string(), m_catalog);
 
     m_catalog.load_context.render = &m_render;
-    m_catalog.load_context.audio_player = &m_audio_player;
+    m_catalog.load_context.audio = &m_audio_player;
 
     return parse_description;
 }
@@ -239,6 +239,61 @@ bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
             quit = true;
             return true;
         }
+        case SDL_SCANCODE_RETURN:
+        {
+            if (doing_text_input)
+            {
+                auto field = get_active_ui().get_selected_text_field();
+                if (field)
+                {
+                    field->insert_line();
+                }
+                Font font = m_catalog.get_font(m_font);
+                field->calculate_cursor_from_selection(field->get_string(), font, true);
+            }
+
+            return true;
+        }
+        case SDL_SCANCODE_TAB:
+        {
+            if (doing_text_input)
+            {
+                auto field = get_active_ui().get_selected_text_field();
+                if (field)
+                {
+                    field->insert_tab(4);
+                }
+            }
+
+            return true;
+        }
+        case SDL_SCANCODE_BACKSPACE:
+        {
+            if (doing_text_input)
+            {
+                auto field = get_active_ui().get_selected_text_field();
+                if (field)
+                {
+                    field->delete_at_cursor();
+
+                    Font font = m_catalog.get_font(m_font);
+                    field->update_text(m_render.renderer, m_catalog.get_font(field->fontId), false);                }
+            }
+            return true;
+        }
+        case SDL_SCANCODE_DELETE:
+        {
+            if (doing_text_input)
+            {
+                auto field = get_active_ui().get_selected_text_field();
+                if (field)
+                {
+                    field->delete_after_cursor();
+                    field->update_text(m_render.renderer, m_catalog.get_font(field->fontId), false);
+                }
+            }
+            return true;
+        }
         case SDL_SCANCODE_F11:
         {
             SDL_SetWindowFullscreen(m_window.window, !is_fullscreen());
@@ -279,13 +334,24 @@ bool Application::mouse_input_game()
         Rectangle area = field.m_area;
         if (area.contains_centered(mouse_pos))
         {
+            text_input_start();
+
             ui.text_input_target = it;
+
+            vec2 relative = m_input.mouse.pos - area.get_top_left();
+            Font font = m_catalog.get_font(m_font);;
+            field.m_selection_start = field.calculate_cursor_from_mouse(relative, field.get_string(), font, true);
+            field.m_selection_end = field.m_selection_start;
+
+            text_input_selected = true;
+            return true;
         }
     }
 
     if (!text_input_selected)
     {
         ui.text_input_target = TEXT_INPUT_TARGET_SENTINEL;
+        text_input_stop();
     }
 
     for (auto& button : ui.button) {
@@ -374,8 +440,6 @@ void Application::update()
     m_time_seconds = time_sec;
 
     timeout();
-
-    flags[FLAG_MODE_CHANGE] = false;
 }
 
 void Application::timeout()
@@ -407,13 +471,12 @@ void Application::set_event_deactive(int event_index)
 void Application::cleanup()
 {
     MIX_Quit();
+    TTF_Quit();
     SDL_Quit();
 }
 
 void Application::init_ui()
 {
-    int a = int(-1) ^ int(1 << (sizeof(int) - 1));
-
     vec2 ws = get_window_size();
     vec2 button_scale = vec2(ws.x * 0.1, ws.y * 0.1);
     Font font = m_catalog.get_font(m_font);
@@ -442,7 +505,7 @@ void Application::init_ui()
     Rectangle editor_area = Rectangle(ws.x * 0.5, ws.y * 0.5, ws.x * 0.8, ws.y * 0.8);
     Color editor_background = Color(0x66, 0x55, 0x66);
     m_ui[UiGame].button.add(backToMenu);
-    m_ui[UiGame].text_field.add(Text_Field(editor_area, editor_background, MainEditor));
+    m_ui[UiGame].text_field.add(Text_Field(editor_area, m_font, editor_background, MainEditor));
 }
 
 void Application::draw()
@@ -454,7 +517,9 @@ void Application::draw()
         return;
     }
 
-    SDL_SetRenderDrawColor(renderer, COLOR_ARG(m_background_color));
+    Color edit_color = Color(0x77, 0x55, 0x66);
+    Color background = doing_text_input ? edit_color : m_background_color;
+    SDL_SetRenderDrawColor(renderer, COLOR_ARG(background));
     SDL_RenderClear(renderer);
 
     draw_game();
@@ -492,6 +557,7 @@ void Application::draw_ui()
                     break;
                 case MenuSettings:
                     draw_settings_menu();
+                    break;
             }
             break;
         }
@@ -522,6 +588,11 @@ void Application::draw_game_ui()
 
 void Application::draw_ui_state(const UiState& state)
 {
+    for (const TextEditor& editor : state.editor)
+    {
+        render_text_editor(editor);
+    }
+
     for (const Text_Field& field : state.text_field)
     {
         render_text_field(field);
@@ -544,10 +615,6 @@ void Application::draw_ui_state(const UiState& state)
 }
 
 void Application::switch_modes(ApplicationMode mode) {
-    if (m_mode != mode)
-    {
-        flags[FLAG_MODE_CHANGE] = true;
-    }
     m_mode = mode;
 }
 
@@ -588,6 +655,16 @@ void Application::render_slider(Rectangle area, vec2 knob_scale, float value, Co
     }
 }
 
+void Application::render_text_editor(const TextEditor& editor)
+{
+    Rectangle text_area = editor.field.m_area;
+    float height = text_area.h * 0.1;
+    Rectangle title_area = Rectangle(text_area.x, text_area.y - height, text_area.w, height);
+    render_textured_rectangle(title_area, editor.title_texture, editor.title_bar_color);
+
+    render_text_field(editor.field);
+}
+
 void Application::render_text_field(const Text_Field& text_field)
 {
     SDL_FRect tf_area = { text_field.m_area.x - text_field.m_area.w / 2, text_field.m_area.y - text_field.m_area.h / 2, text_field.m_area.w, text_field.m_area.h };
@@ -608,12 +685,16 @@ void Application::render_text_field(const Text_Field& text_field)
         SDL_FRect texture_area = { 0, 0, texture_width, texture_height };
         SDL_RenderTexture(m_render.renderer, text_texture, &texture_area, &string_area);
 
-        SDL_SetRenderDrawColor(m_render.renderer, 0x33, 0x56, 0x74, 0xff);
+        const u8 cursorAlpha = 0xaa;
+        SDL_SetRenderDrawColor(m_render.renderer, 0x33, 0x56, 0x74, cursorAlpha);
 
-        SDL_FRect cursor = SDL_FRect { tf_area.x + text_field.m_cursor_pixel_x,
+        float cursor_width = tf_area.w / 1000;
+        SDL_FRect cursor = SDL_FRect { tf_area.x + text_field.m_cursor_pixel_x - cursor_width / 2,
                                        tf_area.y + text_field.m_cursor_pixel_y,
-                                       tf_area.w / 100,
+                                       cursor_width,
                                        font_size };
+
+        SDL_RenderFillRect(m_render.renderer, &cursor);
     }
 }
 
@@ -653,6 +734,39 @@ void Application::render_textured_rectangle(Rectangle rect, SDL_Texture* texture
     SDL_FRect src = {0,0,tex_w,tex_h};
     SDL_FRect dst = area;
     SDL_RenderTexture(m_render.renderer, texture, &src, &dst);
+}
+
+void Application::text_input_stop()
+{
+    SDL_StopTextInput(m_window.window);
+    doing_text_input = false;
+
+    for (int i = 0; i < UiCount; i++)
+    {
+        m_ui[i].text_input_target = TEXT_INPUT_TARGET_SENTINEL;
+    }
+
+    m_background_color = DEFAULT_BACKGROUND_COLOR;
+}
+
+void Application::text_input_start()
+{
+    SDL_StartTextInput(m_window.window);
+    doing_text_input = true;
+
+    m_background_color = {0, 0x44, 0x66, 0xff};
+}
+
+void Application::toggle_text_input()
+{
+    if (!doing_text_input)
+    {
+        text_input_start();
+    }
+    else
+    {
+        text_input_stop();
+    }
 }
 
 void render_text_size(SDL_Renderer* renderer, Text text, vec2 where, vec2 absolute_scale)

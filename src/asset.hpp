@@ -3,7 +3,7 @@
 
 #include "common.hpp"
 #include "template.hpp"
-#include "ui.hpp"
+#include "text.hpp"
 #include "audio.hpp"
 #include "draw.hpp"
 
@@ -27,11 +27,8 @@ static const AssetId NullAssetId = AssetId {-1, 0};
 
 struct AssetLoadContext {
     RenderContext* render;
-    AudioPlayer* audio_player;
+    AudioPlayer* audio;
 };
-
-// resource types
-// thin wrappers around more specific types
 
 using AssetFlags = u8;
 

@@ -127,7 +127,6 @@ struct String {
 
     char operator[](int index) const { return data[index]; }
     bool operator==(const String& other) const;
-    void print(bool newline = false) const;
 	void trim();
 };
 
@@ -150,7 +149,6 @@ int string_find_character(String s, int offset, char c);
 String string_slice(String s, int start, int end);
 String string_slice_to_character(String s, int start, char c);
 String string_get_extension(String s);
-String string_copy(String s);
 u64 string_hash(String s);
 
 int string_to_integer(String s, bool* success);
@@ -167,6 +165,12 @@ struct MutableString {
 
     MutableString(int init_cap) {
         create(init_cap);
+    }
+
+    MutableString(String s) {
+        create(s.size);
+        ASSERT(data);
+        memcpy(data, s.data, s.size * sizeof(char));
     }
 
     ~MutableString()
@@ -224,7 +228,7 @@ struct MutableString {
 };
 
 struct String_Builder {
-    char* buffer = NULL;
+    char* buffer = nullptr;
     int buffer_capacity = 0;
     int cursor = 0;
 
@@ -237,7 +241,28 @@ struct String_Builder {
     ~String_Builder() {
         if (buffer) {
             free(buffer);
+            buffer = nullptr;
         }
+    }
+
+    String_Builder(String_Builder&& other) noexcept {
+        if (buffer) {
+            free(buffer);
+        }
+        buffer = other.buffer;
+        cursor = other.cursor;
+        buffer_capacity = other.buffer_capacity;
+        other.clear_values();
+    }
+
+    void operator=(String_Builder&& other) noexcept {
+        if (buffer) {
+            free(buffer);
+        }
+        buffer = other.buffer;
+        cursor = other.cursor;
+        buffer_capacity = other.buffer_capacity;
+        other.clear_values();
     }
 
     const char* get_end() const { return buffer + cursor; }
@@ -259,6 +284,7 @@ struct String_Builder {
     int ensure_size(int size);
 private:
     void resize();
+    void clear_values() { buffer = nullptr; buffer_capacity = 0; cursor = 0; }
 };
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))

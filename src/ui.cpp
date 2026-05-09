@@ -370,48 +370,72 @@ UiState::~UiState()
 
 Text_Field* UiState::get_selected_text_field()
 {
-    if (text_input_target == TEXT_INPUT_TARGET_SENTINEL)
+    if (!(text_input_target.flags & TEXT_INPUT_TARGET_IS_VALID)) {
         return nullptr;
-    else
-        return text_field.get_ptr(text_input_target);
+    }
+    else if (text_input_target.flags & TEXT_INPUT_TARGET_IS_EDITOR) {
+        return &editor.get_ref(text_input_target.index).field;
+    }
+    else {
+        return text_field.get_ptr(text_input_target.index);
+    }
 }
 
-Text_Field& UiState::get_text_field(UiElementId id) {
+TextEditor* UiState::get_editor(UiElementId id)
+{
+    for (auto& element : editor) {
+        if (element.field.id == id) {
+            return &element;
+        }
+    }
+
+    return nullptr;
+}
+
+Text_Field* UiState::get_text_field(UiElementId id) {
     for (auto& element : text_field)
     {
         if (element.id == id)
         {
-            return element;
+            return &element;
         }
     }
+
+    return nullptr;
 }
 
-Drop_Down_List& UiState::get_drop_down(UiElementId id) {
+Drop_Down_List* UiState::get_drop_down(UiElementId id) {
     for (auto& element : drop_down)
     {
         if (element.id == id)
         {
-            return element;
+            return &element;
         }
     }
+
+    return nullptr;
 }
 
-Label& UiState::get_button(UiElementId id) {
+Label* UiState::get_button(UiElementId id) {
     for (auto& element : button)
     {
         if (element.id == id)
         {
-            return element;
+            return &element;
         }
     }
+
+    return nullptr;
 }
 
-Label& UiState::get_label(UiElementId id) {
+Label* UiState::get_label(UiElementId id) {
     for (auto& element : label)
     {
         if (element.id == id)
         {
-            return element;
+            return &element;
         }
     }
+
+    return nullptr;
 }

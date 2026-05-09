@@ -85,22 +85,28 @@ bool Application::initialize()
     return true;
 }
 
-Text create_text(SDL_Renderer* renderer, String text, Font font, Color color)
-{
+SDL_Texture* render_text(SDL_Renderer* renderer, String text, Font font, Color color) {
     SDL_Color sdl_color = { color.r, color.g, color.b, color.a };
     SDL_Surface* surface = TTF_RenderText_Solid(font.font, text.data, text.size, sdl_color);
 
-    if (!surface)
-        return Text();
+    if (!surface) {
+        return nullptr;
+    }
 
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
 
-    if (!texture)
-    {
+    if (!texture) {
         SDL_DestroySurface(surface);
-        return Text();
+        return nullptr;
     }
 
+    return texture;
+}
+
+Text create_text(SDL_Renderer* renderer, String text, Font font, Color color)
+{
+    SDL_Texture* texture = render_text(renderer, text, font, color);
+    if (!texture) return Text();
     return Text(texture, text);
 }
 
@@ -327,30 +333,54 @@ bool Application::mouse_input_game()
     vec2 mouse_pos = m_input.mouse.pos;
     UiState& ui = m_ui[UiGame];
 
-    bool text_input_selected = false;
     for (int it = 0; it < ui.text_field.size(); it++)
     {
         auto& field = ui.text_field.get_ref(it);
+        Rectangle area = field.m_area;
+        if (area.contains_centered(mouse_pos)) {
+            text_input_start();
+
+            ui.text_input_target.index = it;
+            ui.text_input_target.flags = TEXT_INPUT_TARGET_IS_VALID;
+
+            vec2 relative = m_input.mouse.pos - area.get_top_left();
+            Font font = m_catalog.get_font(field.fontId);
+            field.m_selection_start = field.calculate_cursor_from_mouse(relative, field.get_string(), font, true);
+            field.m_selection_end = field.m_selection_start;
+
+            return true;
+        }
+    }
+
+    for (int it = 0; it < ui.editor.size(); it++) {
+        auto& editor = ui.editor.get_ref(it);
+        auto& field = editor.field;
         Rectangle area = field.m_area;
         if (area.contains_centered(mouse_pos))
         {
             text_input_start();
 
-            ui.text_input_target = it;
+            ui.text_input_target.index = it;
+            ui.text_input_target.flags = TEXT_INPUT_TARGET_IS_VALID | TEXT_INPUT_TARGET_IS_EDITOR;
 
             vec2 relative = m_input.mouse.pos - area.get_top_left();
-            Font font = m_catalog.get_font(m_font);;
+            Font font = m_catalog.get_font(field.fontId);
             field.m_selection_start = field.calculate_cursor_from_mouse(relative, field.get_string(), font, true);
             field.m_selection_end = field.m_selection_start;
 
-            text_input_selected = true;
+            return true;
+        }
+
+        Rectangle title_area = Rectangle(area.x, area.y - (area.h + editor.title_height) / 2, area.w, editor.title_height);
+        if (title_area.contains_centered(mouse_pos))
+        {
+            // @todo drag
             return true;
         }
     }
 
-    if (!text_input_selected)
     {
-        ui.text_input_target = TEXT_INPUT_TARGET_SENTINEL;
+        ui.text_input_target = {};
         text_input_stop();
     }
 
@@ -504,8 +534,13 @@ void Application::init_ui()
 
     Rectangle editor_area = Rectangle(ws.x * 0.5, ws.y * 0.5, ws.x * 0.8, ws.y * 0.8);
     Color editor_background = Color(0x66, 0x55, 0x66);
+    Color title_color = Color(0x44, 0x77, 0x55);
+    Color title_bar_color = Color(0x33, 0x55, 0x66);
+    auto mainEditor = TextEditor(MainEditor, editor_area, m_font, editor_background, title_bar_color, String("Main Editor"), 32);
+    mainEditor.title_texture = render_text(m_render.renderer, mainEditor.name.to_string(), font, title_color);
+
     m_ui[UiGame].button.add(backToMenu);
-    m_ui[UiGame].text_field.add(Text_Field(editor_area, m_font, editor_background, MainEditor));
+    m_ui[UiGame].editor.add(mainEditor);
 }
 
 void Application::draw()
@@ -658,8 +693,7 @@ void Application::render_slider(Rectangle area, vec2 knob_scale, float value, Co
 void Application::render_text_editor(const TextEditor& editor)
 {
     Rectangle text_area = editor.field.m_area;
-    float height = text_area.h * 0.1;
-    Rectangle title_area = Rectangle(text_area.x, text_area.y - height, text_area.w, height);
+    Rectangle title_area = Rectangle(text_area.x, text_area.y - (text_area.h + editor.title_height) / 2, text_area.w, editor.title_height);
     render_textured_rectangle(title_area, editor.title_texture, editor.title_bar_color);
 
     render_text_field(editor.field);
@@ -743,7 +777,7 @@ void Application::text_input_stop()
 
     for (int i = 0; i < UiCount; i++)
     {
-        m_ui[i].text_input_target = TEXT_INPUT_TARGET_SENTINEL;
+        m_ui[i].text_input_target = {};
     }
 
     m_background_color = DEFAULT_BACKGROUND_COLOR;

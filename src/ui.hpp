@@ -42,7 +42,7 @@ struct GapBuffer {
     int end_gap = 0;
 
     GapBuffer() {
-        initialize(32);
+        initialize(256);
     }
 
     GapBuffer(GapBuffer& other) = delete;
@@ -248,13 +248,20 @@ struct TextEditor {
     Text_Field field = {};
     MutableString name = {};
     SDL_Texture* title_texture = nullptr;  // normally rendered name but can be anything or empty
-    Color title_color = Color();
+    float title_height = 0;
     Color title_bar_color = Color();
 
     TextEditor() {}
-    TextEditor(Rectangle area, AssetId font, Color background_color, String editor_name) : field(area, font, background_color), name(editor_name)
+    TextEditor(Rectangle area, AssetId font, Color background_color, String editor_name, float title_height)
+        :
+        field(area, font, background_color),
+        name(editor_name)
     {}
-    TextEditor(UiElementId ident, Rectangle area, AssetId font, Color background_color, Color titleColor, Color titleBarColor, String editor_name) : field(area, font, background_color, ident), name(editor_name), title_color(titleColor), title_bar_color(titleBarColor)
+    TextEditor(UiElementId ident, Rectangle area, AssetId font, Color background_color, Color titleBarColor, String editor_name, float title_height)
+        :
+        field(area, font, background_color, ident),
+        name(editor_name),
+        title_bar_color(titleBarColor)
     {}
 };
 
@@ -351,7 +358,13 @@ struct Drop_Down_List {
     }
 };
 
-static const int TEXT_INPUT_TARGET_SENTINEL = -1;
+#define TEXT_INPUT_TARGET_IS_VALID     BIT(0)
+#define TEXT_INPUT_TARGET_IS_EDITOR BIT(1)
+
+struct TextInputTarget {
+    u16 index = 0;  // less than 65000 text fields? Probably not a problem
+    u16 flags = 0;
+};
 
 struct UiState {
     DArray<TextEditor> editor;
@@ -360,15 +373,15 @@ struct UiState {
     DArray<Label> button;
     DArray<Label> label;
 
-    int text_input_target = TEXT_INPUT_TARGET_SENTINEL;
+    TextInputTarget text_input_target = {};
 
     Text_Field* get_selected_text_field();
 
-    TextEditor& get_editor(UiElementId id);
-    Text_Field& get_text_field(UiElementId id);
-    Drop_Down_List& get_drop_down(UiElementId id);
-    Label& get_button(UiElementId id);
-    Label& get_label(UiElementId id);
+    TextEditor* get_editor(UiElementId id);
+    Text_Field* get_text_field(UiElementId id);
+    Drop_Down_List* get_drop_down(UiElementId id);
+    Label* get_button(UiElementId id);
+    Label* get_label(UiElementId id);
 
     ~UiState();
 };

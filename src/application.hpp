@@ -144,6 +144,7 @@ private:
 
 void get_base_path(String_Builder& builder);
 
+SDL_Texture* render_text(SDL_Renderer* renderer, String text, Font font, Color color);
 Text create_text(SDL_Renderer* renderer, String text, Font font, Color color);
 
 void render_text_size(SDL_Renderer* renderer, Text text, vec2 where, vec2 absolute_scale = vec2(0, 0));

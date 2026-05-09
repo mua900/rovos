@@ -69,7 +69,7 @@ public:
 			grow();
 		}
 
-		m_data[m_size] = elem;
+		m_data[m_size] = std::move(elem);
 		m_size += 1;
 		return ret_index;
 	}

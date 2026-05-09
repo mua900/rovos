@@ -159,6 +159,8 @@ struct MutableString {
     int size = 0;
     int cap = 0;
 
+    void clear_values() { data = nullptr; size = 0; cap = 0; }
+
     MutableString() {
         create(128);
     }
@@ -171,6 +173,21 @@ struct MutableString {
         create(s.size);
         ASSERT(data);
         memcpy(data, s.data, s.size * sizeof(char));
+    }
+
+    MutableString(MutableString& other) = delete;
+    void operator=(MutableString& other) = delete;
+    MutableString(MutableString&& other) noexcept {
+        data = other.data;
+        size = other.size;
+        cap = other.cap;
+        other.clear_values();
+    }
+    void operator=(MutableString&& other) noexcept {
+        data = other.data;
+        size = other.size;
+        cap = other.cap;
+        other.clear_values();
     }
 
     ~MutableString()

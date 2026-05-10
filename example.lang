@@ -1,0 +1,47 @@
+proc square(n : int) : int {
+    return n * n;
+}
+
+type Fruit enum {
+    Apple, Grape, Pear
+}
+
+type Measurement struct {
+    temprature : int,
+    moisture : int,
+}
+
+proc readData(out data : Measurement, in param : int) {
+    t := readTemprature(param);    // comes from the vehicle
+    m : int = readMoisture(param);    // comes from the vehicle
+
+    data.temprature = t;
+    data.moisture = m;
+}
+
+proc sendData(in data : Measurement) {
+    if Comm1.isActive() {
+        Comm1.load(data.temprature);
+        Comm1.load(data.moisture);
+        Comm1.send();
+    }
+}
+
+builtin proc onLowPower() {
+    Computer.Navigation.disable();
+}
+
+builtin proc startUp() {
+    data : Measurement;
+    readData(data, 32);
+    sendData(data);
+    // every 10 seconds
+    timer := startTimedRoutine(Time.getCurrentTime() + Time.seconds(10));
+    timer.onTimeout(readAndReset);
+}
+
+proc readAndReset() {
+    data : Measurement;
+    readData(data, 35);
+    sendData(data);
+}

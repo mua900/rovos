@@ -40,7 +40,20 @@ add_executable(game
 	src/main.cpp
 )
 
+add_library(language STATIC
+	src/language/token.hpp
+	src/language/expr.hpp
+	src/language/statement.hpp
+	src/language/lang.hpp
+	src/language/language.cpp
+)
+
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT game)
+
+target_link_libraries(game PRIVATE language)
+
+target_include_directories(game PRIVATE src/)
+target_include_directories(language PRIVATE src/)
 
 add_subdirectory(vendor/SDL-3.4.4 EXCLUDE_FROM_ALL)
 

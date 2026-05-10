@@ -101,6 +101,7 @@ struct Text_Field
 
     Rectangle m_area = {};
     Color background = {};
+    Color text_color = {};
 
     GapBuffer m_buffer = {};
     String_Builder m_text = {};
@@ -119,17 +120,19 @@ struct Text_Field
 
     Text_Field() {}
 
-    Text_Field(Rectangle area, AssetId font, Color background_color)
+    Text_Field(Rectangle area, AssetId font, Color background_color, Color textColor)
     {
         fontId = font;
         background = background_color;
+        text_color = textColor;
         m_area = area;
     }
 
-    Text_Field(Rectangle area, AssetId font, Color background_color, UiElementId ident) : id(ident)
+    Text_Field(Rectangle area, AssetId font, Color background_color, Color textColor, UiElementId ident) : id(ident)
     {
         fontId = font;
         background = background_color;
+        text_color = textColor;
         m_area = area;
     }
 
@@ -160,7 +163,7 @@ struct Text_Field
 
     bool update_text(SDL_Renderer* renderer, Font font, bool wrapped)
     {
-        return render_text_field_texture(renderer, font, Color { 0x11, 0x22, 0x11, 0xff }, wrapped);
+        return render_text_field_texture(renderer, font, text_color, wrapped);
     }
 
     void clear() {
@@ -240,27 +243,32 @@ struct Text_Field
     void calculate_cursor_from_selection(String string, Font font, bool wrapped);
     size_t calculate_cursor_from_mouse(vec2 mouse_position, String string, Font font, bool wrapped);
 
-private:
     bool render_text_field_texture(SDL_Renderer* renderer, Font font, Color color, bool wrapped);
 };
 
 struct TextEditor {
     Text_Field field = {};
     MutableString name = {};
-    SDL_Texture* title_texture = nullptr;  // normally rendered name but can be anything or empty
+    SDL_Texture* title_texture = nullptr;  // rendered name
     float title_height = 0;
+    Color title_color = Color();  // color of the title text
     Color title_bar_color = Color();
 
     TextEditor() {}
-    TextEditor(Rectangle area, AssetId font, Color background_color, String editor_name, float title_height)
+    TextEditor(Rectangle area, AssetId font, Color background_color, Color textColor, Color titleColor, Color titleBarColor, String editor_name, float title_height)
         :
-        field(area, font, background_color),
-        name(editor_name)
-    {}
-    TextEditor(UiElementId ident, Rectangle area, AssetId font, Color background_color, Color titleBarColor, String editor_name, float title_height)
-        :
-        field(area, font, background_color, ident),
+        field(area, font, background_color, textColor),
         name(editor_name),
+        title_height(title_height),
+        title_color(titleColor),
+        title_bar_color(titleBarColor)
+    {}
+    TextEditor(UiElementId ident, Rectangle area, AssetId font, Color background_color, Color textColor, Color titleColor, Color titleBarColor, String editor_name, float title_height)
+        :
+        field(area, font, background_color, textColor, ident),
+        name(editor_name),
+        title_height(title_height),
+        title_color(titleColor),
         title_bar_color(titleBarColor)
     {}
 };
@@ -359,7 +367,7 @@ struct Drop_Down_List {
 };
 
 #define TEXT_INPUT_TARGET_IS_VALID     BIT(0)
-#define TEXT_INPUT_TARGET_IS_EDITOR BIT(1)
+#define TEXT_INPUT_TARGET_IS_EDITOR    BIT(1)
 
 struct TextInputTarget {
     u16 index = 0;  // less than 65000 text fields? Probably not a problem
@@ -374,6 +382,9 @@ struct UiState {
     DArray<Label> label;
 
     TextInputTarget text_input_target = {};
+    vec2 assumed_window_size = {};
+
+    void update_state(vec2 window_size, SDL_Renderer* renderer, const AssetCatalog& catalog);
 
     Text_Field* get_selected_text_field();
 

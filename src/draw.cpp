@@ -250,7 +250,68 @@ void draw_texture(const RenderContext& context, Rectangle area, SDL_Texture* tex
     SDL_RenderTexture(context.renderer, texture, NULL, &dst);
 }
 
+SDL_Texture* render_text(SDL_Renderer* renderer, String text, Font font, Color color) {
+    SDL_Color sdl_color = { color.r, color.g, color.b, color.a };
+    SDL_Surface* surface = TTF_RenderText_Solid(font.font, text.data, text.size, sdl_color);
+
+    if (!surface) {
+        return nullptr;
+    }
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+
+    if (!texture) {
+        SDL_DestroySurface(surface);
+        return nullptr;
+    }
+
+    return texture;
+}
+
+Text create_text(SDL_Renderer* renderer, String text, Font font, Color color)
+{
+    SDL_Texture* texture = render_text(renderer, text, font, color);
+    if (!texture) return Text();
+    return Text(texture, text);
+}
+
+void render_text_size(SDL_Renderer* renderer, Text text, vec2 where, vec2 absolute_scale)
+{
+    float tex_w, tex_h;
+    SDL_GetTextureSize(text.texture, &tex_w, &tex_h);
+
+    if (!absolute_scale.x)
+    {
+        absolute_scale = vec2(tex_w, tex_h);
+    }
+
+    SDL_FRect src = { 0,0,tex_w,tex_h };
+    SDL_FRect dst = {where.x - absolute_scale.x/2, where.y - absolute_scale.y/2, absolute_scale.x, absolute_scale.y};
+
+    SDL_RenderTexture(renderer, text.texture, &src, &dst);
+}
+
+void render_text_scale(SDL_Renderer* renderer, Text text, vec2 where, vec2 scale_factor)
+{
+    float tex_w, tex_h;
+    SDL_GetTextureSize(text.texture, &tex_w, &tex_h);
+
+    if (!scale_factor.x)
+    {
+        scale_factor = vec2(1,1);
+    }
+
+    vec2 scale = vec2(tex_w * scale_factor.x, tex_h * scale_factor.y);
+
+    SDL_FRect src = { 0,0,tex_w,tex_h };
+    SDL_FRect dst = {where.x - scale.x/2, where.y - scale.y/2, scale.x, scale.y};
+
+    SDL_RenderTexture(renderer, text.texture, &src, &dst);
+}
+
 bool loadShader(RenderContext& context, const char* path)
 {
+    // @todo
+    ASSERT(false);
     return false;
 }

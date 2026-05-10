@@ -34,6 +34,9 @@ bool Application::initialize()
             return false;
         }
 
+        // minimum aspect ratio of 1 and maximum aspect ratio of 2 default 1.6
+        SDL_SetWindowAspectRatio(window, 1.0, 2.0);
+
         SDL_Renderer* renderer = SDL_CreateRenderer(window, nullptr);
         if (!renderer)
         {
@@ -83,31 +86,6 @@ bool Application::initialize()
     quit = false;
 
     return true;
-}
-
-SDL_Texture* render_text(SDL_Renderer* renderer, String text, Font font, Color color) {
-    SDL_Color sdl_color = { color.r, color.g, color.b, color.a };
-    SDL_Surface* surface = TTF_RenderText_Solid(font.font, text.data, text.size, sdl_color);
-
-    if (!surface) {
-        return nullptr;
-    }
-
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-
-    if (!texture) {
-        SDL_DestroySurface(surface);
-        return nullptr;
-    }
-
-    return texture;
-}
-
-Text create_text(SDL_Renderer* renderer, String text, Font font, Color color)
-{
-    SDL_Texture* texture = render_text(renderer, text, font, color);
-    if (!texture) return Text();
-    return Text(texture, text);
 }
 
 bool Application::read_asset_catalog(String_Builder& path)
@@ -191,16 +169,20 @@ void Application::handle_events()
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             {
                 SDL_MouseButtonEvent mouse = e.button;
-                if (mouse_input())
-                {
-                    break;
-                }
-
+                m_input.mouse.down = true;
+                mouse_input();
+                break;
+            }
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+            {
+                SDL_MouseButtonEvent mouse = e.button;
+                m_input.mouse.down = false;
+                // @todo on mouse up
                 break;
             }
             case SDL_EVENT_MOUSE_MOTION:
             {
-                m_input.mouse.flags = SDL_GetMouseState(&m_input.mouse.pos.x, &m_input.mouse.pos.y);
+                m_input.mouse.buttonFlags = SDL_GetMouseState(&m_input.mouse.pos.x, &m_input.mouse.pos.y);
                 break;
             }
             case SDL_EVENT_WINDOW_RESIZED:
@@ -208,6 +190,9 @@ void Application::handle_events()
                 int render_size_x, render_size_y;
                 SDL_GetRenderOutputSize(m_render.renderer, &render_size_x, &render_size_y);
                 m_render.render_size = vec2(render_size_x, render_size_y);
+
+                update_ui_state(vec2(render_size_x, render_size_y));
+
                 break;
             }
             case SDL_EVENT_TEXT_INPUT:
@@ -486,6 +471,18 @@ void Application::timeout()
     }
 }
 
+void Application::update_ui_state(vec2 window_size) {
+    for (int i = 0; i < UiCount; i++)
+    {
+        vec2 assumed = m_ui[i].assumed_window_size;
+        float x_factor = window_size.x / assumed.x;
+        float y_factor = window_size.y / assumed.y;
+        if ((fabsf(x_factor - 1.0f) >= 0.1f) || (fabsf(y_factor - 1.0f) >= 0.1f)) {
+            m_ui[i].update_state(window_size, m_render.renderer, m_catalog);
+        }
+    }
+}
+
 void Application::set_event_active(int event_index, double timeout_seconds)
 {
     s64 timeout = (s64)(timeout_seconds * NS_PER_SECONDS);
@@ -508,6 +505,9 @@ void Application::cleanup()
 void Application::init_ui()
 {
     vec2 ws = get_window_size();
+
+    for (auto& ui : m_ui) { ui.assumed_window_size = ws; }
+
     vec2 button_scale = vec2(ws.x * 0.1, ws.y * 0.1);
     Font font = m_catalog.get_font(m_font);
 
@@ -534,9 +534,10 @@ void Application::init_ui()
 
     Rectangle editor_area = Rectangle(ws.x * 0.5, ws.y * 0.5, ws.x * 0.8, ws.y * 0.8);
     Color editor_background = Color(0x66, 0x55, 0x66);
+    Color editor_text_color = Color { 0x11, 0x22, 0x11, 0xff };
     Color title_color = Color(0x44, 0x77, 0x55);
     Color title_bar_color = Color(0x33, 0x55, 0x66);
-    auto mainEditor = TextEditor(MainEditor, editor_area, m_font, editor_background, title_bar_color, String("Main Editor"), 32);
+    auto mainEditor = TextEditor(MainEditor, editor_area, m_font, editor_background, editor_text_color, title_color, title_bar_color, String("Main Editor"), 32);
     mainEditor.title_texture = render_text(m_render.renderer, mainEditor.name.to_string(), font, title_color);
 
     m_ui[UiGame].button.add(backToMenu);
@@ -657,7 +658,7 @@ void Application::switch_menu(MenuName menu) {
     m_menu = menu;
 }
 
-void Application::render_rectangle(Rectangle rect, Color color, bool center)
+void Application::render_rectangle(Rectangle rect, Color color, bool center) const
 {
     SDL_SetRenderDrawColor(m_render.renderer, COLOR_ARG(color));
     SDL_FRect area = center ?
@@ -666,7 +667,7 @@ void Application::render_rectangle(Rectangle rect, Color color, bool center)
     SDL_RenderFillRect(m_render.renderer, &area);
 }
 
-void Application::render_slider(Rectangle area, vec2 knob_scale, float value, Color slider_color, Color knob_color, const Text& text)
+void Application::render_slider(Rectangle area, vec2 knob_scale, float value, Color slider_color, Color knob_color, const Text& text) const
 {
     float slider_knob_width = area.w * knob_scale.x;
     float slider_knob_height = area.h * knob_scale.y;
@@ -690,7 +691,7 @@ void Application::render_slider(Rectangle area, vec2 knob_scale, float value, Co
     }
 }
 
-void Application::render_text_editor(const TextEditor& editor)
+void Application::render_text_editor(const TextEditor& editor) const
 {
     Rectangle text_area = editor.field.m_area;
     Rectangle title_area = Rectangle(text_area.x, text_area.y - (text_area.h + editor.title_height) / 2, text_area.w, editor.title_height);
@@ -699,7 +700,7 @@ void Application::render_text_editor(const TextEditor& editor)
     render_text_field(editor.field);
 }
 
-void Application::render_text_field(const Text_Field& text_field)
+void Application::render_text_field(const Text_Field& text_field) const
 {
     SDL_FRect tf_area = { text_field.m_area.x - text_field.m_area.w / 2, text_field.m_area.y - text_field.m_area.h / 2, text_field.m_area.w, text_field.m_area.h };
     SDL_SetRenderDrawColor(m_render.renderer, COLOR_ARG(text_field.background));
@@ -732,7 +733,7 @@ void Application::render_text_field(const Text_Field& text_field)
     }
 }
 
-void Application::render_dropdown(const Drop_Down_List& list) {
+void Application::render_dropdown(const Drop_Down_List& list) const {
     SDL_SetRenderDrawColor(m_render.renderer, COLOR_ARG(list.title_color));
 
     SDL_FRect header_area = {
@@ -756,7 +757,7 @@ void Application::render_dropdown(const Drop_Down_List& list) {
     }
 }
 
-void Application::render_textured_rectangle(Rectangle rect, SDL_Texture* texture, Color color, bool center) {
+void Application::render_textured_rectangle(Rectangle rect, SDL_Texture* texture, Color color, bool strech, bool center) const {
     SDL_SetRenderDrawColor(m_render.renderer, COLOR_ARG(color));
     SDL_FRect area = center ?
         SDL_FRect { rect.x - rect.w / 2, rect.y - rect.h / 2, rect.w, rect.h } :
@@ -765,8 +766,10 @@ void Application::render_textured_rectangle(Rectangle rect, SDL_Texture* texture
 
     float tex_w, tex_h;
     SDL_GetTextureSize(texture, &tex_w, &tex_h);
-    SDL_FRect src = {0,0,tex_w,tex_h};
-    SDL_FRect dst = area;
+    SDL_FRect src = { 0, 0, tex_w, tex_h};
+    float width = strech ? area.w : tex_w;
+    float height = strech ? area.h : tex_h;
+    SDL_FRect dst = { area.x, area.y, width, height };
     SDL_RenderTexture(m_render.renderer, texture, &src, &dst);
 }
 
@@ -801,38 +804,4 @@ void Application::toggle_text_input()
     {
         text_input_stop();
     }
-}
-
-void render_text_size(SDL_Renderer* renderer, Text text, vec2 where, vec2 absolute_scale)
-{
-    float tex_w, tex_h;
-    SDL_GetTextureSize(text.texture, &tex_w, &tex_h);
-
-    if (!absolute_scale.x)
-    {
-        absolute_scale = vec2(tex_w, tex_h);
-    }
-
-    SDL_FRect src = { 0,0,tex_w,tex_h };
-    SDL_FRect dst = {where.x - absolute_scale.x/2, where.y - absolute_scale.y/2, absolute_scale.x, absolute_scale.y};
-
-    SDL_RenderTexture(renderer, text.texture, &src, &dst);
-}
-
-void render_text_scale(SDL_Renderer* renderer, Text text, vec2 where, vec2 scale_factor)
-{
-    float tex_w, tex_h;
-    SDL_GetTextureSize(text.texture, &tex_w, &tex_h);
-
-    if (!scale_factor.x)
-    {
-        scale_factor = vec2(1,1);
-    }
-
-    vec2 scale = vec2(tex_w * scale_factor.x, tex_h * scale_factor.y);
-
-    SDL_FRect src = { 0,0,tex_w,tex_h };
-    SDL_FRect dst = {where.x - scale.x/2, where.y - scale.y/2, scale.x, scale.y};
-
-    SDL_RenderTexture(renderer, text.texture, &src, &dst);
 }

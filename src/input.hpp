@@ -20,8 +20,6 @@
 #define KEY_RIGHT SDL_SCANCODE_RIGHT
 #define KEY_LEFT SDL_SCANCODE_LEFT
 
-typedef SDL_MouseButtonFlags Mouse_Flags;
-
 // @todo gamepad
 
 struct KeyboardState {
@@ -32,7 +30,8 @@ struct KeyboardState {
 
 struct MouseState {
     vec2 pos = {};
-    Mouse_Flags flags = {};
+    SDL_MouseButtonFlags buttonFlags = {};
+    bool down = false;
 };
 
 struct Input {

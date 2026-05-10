@@ -125,13 +125,13 @@ private:
     bool set_eval_string_left(String s);
     bool set_eval_string_right(String s);
 
-    void render_rectangle(Rectangle rect, Color color, bool center = true);
-    void render_textured_rectangle(Rectangle rect, SDL_Texture* texture, Color color, bool center = true);
+    void render_rectangle(Rectangle rect, Color color, bool center = true) const;
+    void render_textured_rectangle(Rectangle rect, SDL_Texture* texture, Color color, bool strech = false, bool center = true) const;
 
-    void render_slider(Rectangle area, vec2 knob_scale, float value, Color slider_color, Color knob_color, const Text& text);
-    void render_text_field(const Text_Field& text_field);
-    void render_text_editor(const TextEditor& editor);
-    void render_dropdown(const Drop_Down_List& list);
+    void render_slider(Rectangle area, vec2 knob_scale, float value, Color slider_color, Color knob_color, const Text& text) const;
+    void render_text_field(const Text_Field& text_field) const;
+    void render_text_editor(const TextEditor& editor) const;
+    void render_dropdown(const Drop_Down_List& list) const;
 
     void clear_text_input_selection();
 
@@ -143,9 +143,3 @@ private:
 };
 
 void get_base_path(String_Builder& builder);
-
-SDL_Texture* render_text(SDL_Renderer* renderer, String text, Font font, Color color);
-Text create_text(SDL_Renderer* renderer, String text, Font font, Color color);
-
-void render_text_size(SDL_Renderer* renderer, Text text, vec2 where, vec2 absolute_scale = vec2(0, 0));
-void render_text_scale(SDL_Renderer* renderer, Text text, vec2 where, vec2 scale_factor = vec2(0,0));

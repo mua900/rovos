@@ -324,6 +324,59 @@ void Text_Field::insert_line()
     m_selection_end = m_selection_start;
 }
 
+void UiState::update_state(vec2 window_size, SDL_Renderer* renderer, const AssetCatalog& catalog) {
+    float y_factor = window_size.y / assumed_window_size.y;
+    float x_factor = window_size.x / assumed_window_size.x;
+
+    for (auto& ed : editor) {
+        Font font = catalog.get_font(ed.field.fontId);
+
+        ed.title_height *= y_factor;
+        if (ed.title_texture) {
+            SDL_DestroyTexture(ed.title_texture);
+            ed.title_texture = render_text(renderer, ed.name.to_string(), font, ed.title_color);
+        }
+
+        ed.field.m_area.x *= x_factor;
+        ed.field.m_area.y *= y_factor;
+        ed.field.m_area.w *= x_factor;
+        ed.field.m_area.h *= y_factor;
+        ed.field.render_text_field_texture(renderer, font, ed.field.text_color, true);
+    }
+
+    for (auto& field : text_field) {
+        Font font = catalog.get_font(field.fontId);
+
+        field.m_area.x *= x_factor;
+        field.m_area.y *= y_factor;
+        field.m_area.w *= x_factor;
+        field.m_area.h *= y_factor;
+        field.render_text_field_texture(renderer, font, field.text_color, true);
+    }
+
+    for (auto& drop : drop_down) {
+        drop.pos.x *= x_factor;
+        drop.pos.y *= y_factor;
+        drop.scale.x *= x_factor;
+        drop.scale.y *= y_factor;
+    }
+
+    for (auto& but : button) {
+        but.position.x *= x_factor;
+        but.position.y *= y_factor;
+        but.scale.x *= x_factor;
+        but.scale.y *= y_factor;
+    }
+
+    for (auto& lbl : label) {
+        lbl.position.x *= x_factor;
+        lbl.position.y *= y_factor;
+        lbl.scale.x *= x_factor;
+        lbl.scale.y *= y_factor;
+    }
+
+    assumed_window_size = window_size;
+}
 
 bool load_font(Font* font, String_Builder& path, String font_folder, String font_file, float size)
 {

@@ -173,6 +173,7 @@ struct MutableString {
         create(s.size);
         ASSERT(data);
         memcpy(data, s.data, s.size * sizeof(char));
+        size = s.size;
     }
 
     MutableString(MutableString& other) = delete;

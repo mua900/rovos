@@ -69,7 +69,7 @@ struct AssetCatalog {
         assets.get_ref(index).identifier.generation = 0;
     }
 
-    const SDL_Texture* get_image(AssetId id)
+    const SDL_Texture* get_image(AssetId id) const
     {
         if (!id.is_valid())
         {
@@ -85,7 +85,7 @@ struct AssetCatalog {
         return asset.data.image;
     }
 
-    const Font get_font(AssetId id)
+    const Font get_font(AssetId id) const
     {
         if (!id.is_valid())
         {
@@ -101,7 +101,7 @@ struct AssetCatalog {
         return asset.data.font;
     }
 
-    const TrackId get_audio(AssetId id)
+    const TrackId get_audio(AssetId id) const
     {
         if (!id.is_valid())
         {
@@ -117,7 +117,7 @@ struct AssetCatalog {
         return asset.data.audio;
     }
 
-    const SDL_GPUShader* get_shader(AssetId id)
+    const SDL_GPUShader* get_shader(AssetId id) const
     {
         if (!id.is_valid())
         {

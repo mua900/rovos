@@ -33,13 +33,13 @@ enum Op_Binary {
 
 struct Variable {
     String name = {};
-    Variable_Type type = Var_Type_Real;
+    String type_name = {};
 
     Variable() {}
-    Variable(String n, Variable_Type p_type) : name(n), type(p_type) {}
+    Variable(String n, String p_type) : name(n), type_name(p_type) {}
 
     bool operator==(const Variable& other) const {
-        return type == other.type && name == other.name;
+        return type_name == other.type_name && name == other.name;
     }
 };
 

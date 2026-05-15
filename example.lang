@@ -8,27 +8,28 @@ type Fruit enum {
 
 type Measurement struct {
     temprature : int,
-    moisture : int,
+    radiation : int,
 }
 
 proc readData(out data : Measurement, in param : int) {
-    t := readTemprature(param);    // comes from the vehicle
-    m : int = readMoisture(param);    // comes from the vehicle
+    t := Thermometer.readTemprature(param);    // there is a thermometer part called Thermometer
+    r : int = PartName.measureRadiation(param);    // there is a Radiometer called PartName on the vehicle
 
     data.temprature = t;
-    data.moisture = m;
+    data.radiation = r;
 }
 
 proc sendData(in data : Measurement) {
+    // you have a part named Comm1 on the vehicle
     if Comm1.isActive() {
         Comm1.load(data.temprature);
-        Comm1.load(data.moisture);
+        Comm1.load(data.radiation);
         Comm1.send();
     }
 }
 
 builtin proc onLowPower() {
-    Computer.Navigation.disable();
+    Nav.disable();  // there is a computer named Nav on the vehicle
 }
 
 builtin proc startUp() {
@@ -36,8 +37,7 @@ builtin proc startUp() {
     readData(data, 32);
     sendData(data);
     // every 10 seconds
-    timer := startTimedRoutine(Time.getCurrentTime() + Time.seconds(10));
-    timer.onTimeout(readAndReset);
+    timer := Timer.startTimedRoutine(readAndReset, Time.getCurrentTime() + Time.seconds(10));  // Time and Timer are a global namespaces
 }
 
 proc readAndReset() {

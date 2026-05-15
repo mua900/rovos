@@ -2,6 +2,7 @@
 #define _PARSE_H
 
 #include "expr.hpp"
+#include "statement.hpp"
 
 struct Error {
     const char* message;
@@ -31,6 +32,17 @@ private:
     int cursor = 0;
     Error parser_error = {};
 
+    Statement* parse_statement();
+    StmtBlock* parse_block_statement();
+    StmtDeclVar* parse_variable_declaration();
+    StmtDeclProc* parse_procedure_declaration(bool builtin);
+    StmtDeclType* parse_type_declaration();
+    StmtAssignment* parse_assignment();
+    StmtIf* parse_if();
+    StmtFor* parse_for();
+    StmtWhile* parse_while();
+    StmtExpression* parse_expression_statement();
+
     Expr* parse_expression();
 
     // according to precedence in order
@@ -46,5 +58,7 @@ private:
 
     bool consume(Token_Type type);
 };
+
+bool is_type_token(Token_Type type);
 
 #endif // _PARSE_H

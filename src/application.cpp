@@ -268,7 +268,7 @@ bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
                     field->delete_at_cursor();
 
                     Font font = m_catalog.get_font(m_font);
-                    field->update_text(m_render.renderer, m_catalog.get_font(field->fontId), false);                }
+                    field->update_text(m_render.renderer, m_catalog.get_font(field->fontId), true);                }
             }
             return true;
         }
@@ -280,9 +280,69 @@ bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
                 if (field)
                 {
                     field->delete_after_cursor();
-                    field->update_text(m_render.renderer, m_catalog.get_font(field->fontId), false);
+                    field->update_text(m_render.renderer, m_catalog.get_font(field->fontId), true);
                 }
             }
+            return true;
+        }
+        case SDL_SCANCODE_HOME:
+        {
+            if (doing_text_input)
+            {
+                auto field = get_active_ui().get_selected_text_field();
+                if (field) {
+                    field->delete_text();
+                    field->m_selection_start = 0;
+                    field->m_selection_end = 0;
+
+                    Font font = m_catalog.get_font(field->fontId);
+                    field->update_text(m_render.renderer, font, true);
+                }
+            }
+
+            return true;
+        }
+        case SDL_SCANCODE_END:
+        {
+            if (doing_text_input)
+            {
+                auto field = get_active_ui().get_selected_text_field();
+                if (field) {
+                    field->delete_text();
+                    field->m_selection_start = field->m_buffer.length;
+                    field->m_selection_end = field->m_selection_start;
+
+                    Font font = m_catalog.get_font(field->fontId);
+                    field->update_text(m_render.renderer, font, true);
+                }
+            }
+
+            return true;
+        }
+        case SDL_SCANCODE_LEFT: {
+            if (doing_text_input) {
+                auto field = get_active_ui().get_selected_text_field();
+                if (field) {
+                    field->m_selection_start = MAX(0, field->m_selection_start - 1);
+                    field->m_selection_end = field->m_selection_start;
+                    Font font = m_catalog.get_font(field->fontId);
+                    field->update_text(m_render.renderer, font, true);
+                }
+            }
+
+            return true;
+        }
+        case SDL_SCANCODE_RIGHT: {
+            if (doing_text_input) {
+                auto field = get_active_ui().get_selected_text_field();
+                if (field) {
+                    field->m_selection_start = MIN(field->m_selection_start + 1, field->m_buffer.length);
+                    field->m_selection_end = field->m_selection_start;
+                    Font font = m_catalog.get_font(field->fontId);
+                    field->update_text(m_render.renderer, font, true);
+                }
+            }
+
             return true;
         }
         case SDL_SCANCODE_F11:

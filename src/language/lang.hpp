@@ -5,12 +5,13 @@
 
 extern "C" {
 
-    enum Variable_Type : int {
-        Var_Type_Integer,
-        Var_Type_Real,
-        Var_Type_Boolean,
+    using Variable_Type = u32;
+    enum {
+        Var_Type_Integer = 0,
+        Var_Type_Real = 1,
+        Var_Type_Boolean = 2,
     };
-    
+
     inline bool is_numeric(Variable_Type type) { return type == Var_Type_Integer || type == Var_Type_Real; }
 
     struct Value {

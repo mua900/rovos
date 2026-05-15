@@ -3,6 +3,284 @@
 #include "token.hpp"
 #include "statement.hpp"
 
+Statement* Parser::parse_statement() {
+    bool builtin = false;
+
+    switch (tokens.get(cursor).type) {
+        case TOKEN_TYPE_IF: {
+            return parse_if();
+        }
+        case TOKEN_TYPE_FOR: {
+            return parse_for();
+        }
+        case TOKEN_TYPE_WHILE: {
+            return parse_while();
+        }
+        case TOKEN_TYPE_BUILTIN: {
+            ASSERT(consume(TOKEN_TYPE_BUILTIN));
+            builtin = true;
+        }  // fallthrough
+        case TOKEN_TYPE_PROC: {
+            return parse_procedure_declaration(builtin);
+        }
+        case TOKEN_TYPE_TYPE: {
+            return parse_type_declaration();
+        }
+        case TOKEN_TYPE_BRACE_OPEN: {
+            return parse_block_statement();
+        }
+        case TOKEN_TYPE_VAR: {
+            return parse_variable_declaration();
+        }
+        default: {
+            Expr* expr = parse_expression();
+            if (tokens.get(cursor).type == TOKEN_TYPE_EQUALS) {
+                cursor ++;
+                Expr* rhs = parse_expression();
+                if (!consume(TOKEN_TYPE_SEMICOLON)) {
+                    parser_error = Error("Missing ; at the end of assignment", tokens.get(cursor).offset);
+                }
+
+                return new StmtAssignment(expr, rhs);
+            }
+            else {
+                return new StmtExpression(expr);
+            }
+        }
+    }
+}
+
+StmtBlock* Parser::parse_block_statement() {
+    if (!consume(TOKEN_TYPE_BRACE_OPEN)) {
+        return nullptr;
+    }
+
+    DArray<Statement*> body;
+    while (cursor < tokens.size && tokens.get(cursor).type != TOKEN_TYPE_BRACE_CLOSE)
+    {
+        Statement* stmt = parse_statement();
+        body.add(stmt);
+    }
+
+    if (tokens.get(cursor).type != TOKEN_TYPE_BRACE_CLOSE)
+    {
+        return nullptr;
+    }
+
+    cursor ++;
+
+    return new StmtBlock(body);
+}
+
+StmtDeclVar* Parser::parse_variable_declaration() {
+    if (!consume(TOKEN_TYPE_VAR)) { return nullptr; }
+
+    if (tokens.get(cursor).type != TOKEN_TYPE_IDENT)
+    {
+        parser_error = Error("Expected variable name after var keyword", tokens.get(cursor).offset);
+        return nullptr;
+    }
+
+    String name = tokens.get(cursor).token_string;
+    cursor ++;
+
+    bool infer_type = false;
+    String type_name = {};
+    if (tokens.get(cursor).type == TOKEN_TYPE_WALRUS) {
+        infer_type = true;
+        cursor ++;
+    }
+    else if (tokens.get(cursor).type == TOKEN_TYPE_COLON) {
+        cursor ++;
+        if (tokens.get(cursor).type != TOKEN_TYPE_IDENT) {
+            return nullptr;
+        }
+        type_name = tokens.get(cursor).token_string;
+        cursor ++;
+        if (!consume(TOKEN_TYPE_EQUALS)) {
+            return nullptr;
+        }
+    }
+    else {
+        return nullptr;
+    }
+
+    Expr* rhs = parse_expression();
+    if (!rhs)
+    {
+        return nullptr;
+    }
+
+    return new StmtDeclVar(name, rhs, type_name, infer_type);
+}
+
+StmtDeclProc* Parser::parse_procedure_declaration(bool builtin) {
+    if (!consume(TOKEN_TYPE_PROC)) { return nullptr; }
+
+    if (tokens.get(cursor).type == TOKEN_TYPE_IDENT)
+    {
+        parser_error = Error("Expeceted procedure name after proc keyword", tokens.get(cursor).offset);
+        return nullptr;
+    }
+
+    String name = tokens.get(cursor).token_string;
+    cursor ++;
+
+    ProcFlags flags = builtin ? PROC_IS_BUILTIN : 0;
+
+    DArray<Parameter> params = {};
+
+    if (!consume(TOKEN_TYPE_PAREN_OPEN)) { return nullptr; }
+    while (cursor < tokens.size && tokens.get(cursor).type != TOKEN_TYPE_PAREN_CLOSE)
+    {
+        ParameterFlags paramFlags = 0;
+
+        if (tokens.get(cursor).type == TOKEN_TYPE_CONST) {
+            paramFlags |= PARAMETER_IS_CONST;
+            cursor ++;
+        }
+        if (tokens.get(cursor).type == TOKEN_TYPE_IN) {
+            paramFlags |= PARAMETER_IS_INPUT;
+            cursor ++;
+        }
+        if (tokens.get(cursor).type == TOKEN_TYPE_OUT) {
+            paramFlags |= PARAMETER_IS_OUTPUT;
+            cursor ++;
+        }
+
+        if (!(paramFlags & PARAMETER_IS_INPUT) && !(paramFlags & PARAMETER_IS_OUTPUT)) {
+            paramFlags |= PARAMETER_IS_INPUT & PARAMETER_IS_OUTPUT;
+        }
+
+        if (tokens.get(cursor).type != TOKEN_TYPE_IDENT) {
+            return nullptr;
+        }
+        String param_name = tokens.get(cursor).token_string;
+
+        if (!consume(TOKEN_TYPE_COLON)) {
+            return nullptr;
+        }
+
+        Token type_token = tokens.get(cursor);
+        if (!is_type_token(type_token.type)) {
+            return nullptr;
+        }
+
+        if (tokens.get(cursor).type == TOKEN_TYPE_PAREN_CLOSE)
+            break;
+
+        if (!consume(TOKEN_TYPE_COMMA)) {
+            return nullptr;
+        }
+
+        params.add(Parameter(param_name, type_token.token_string, paramFlags));
+    }
+    if (!consume(TOKEN_TYPE_PAREN_CLOSE)) { return nullptr; }
+
+    if (!consume(TOKEN_TYPE_BRACE_OPEN)) { return nullptr; }
+
+    DArray<Statement*> body;
+    while (cursor < tokens.size && tokens.get(cursor).type != TOKEN_TYPE_BRACE_CLOSE) {
+        Statement* stmt = parse_statement();
+        if (!stmt) {
+            return nullptr;
+        }
+
+        body.add(stmt);
+    }
+
+    if (!consume(TOKEN_TYPE_BRACE_CLOSE)) { return nullptr; }
+
+    return new StmtDeclProc(name, params, body, flags);
+}
+
+StmtDeclType* Parser::parse_type_declaration() {
+    if (!consume(TOKEN_TYPE_TYPE)) { return nullptr; }
+
+    if (tokens.get(cursor).type != TOKEN_TYPE_IDENT) {
+        return nullptr;
+    }
+
+    String name = tokens.get(cursor).token_string;
+
+    TypeFlags flags = 0;
+
+    auto kind = tokens.get(cursor).type;
+    if (kind == TOKEN_TYPE_STRUCT) {
+        flags |= TypeIsComposite;
+    }
+    else if (kind == TOKEN_TYPE_ENUM) {
+        flags |= TypeIsEnum;
+    }
+
+    if (!consume(TOKEN_TYPE_BRACE_OPEN)) {
+        return nullptr;
+    }
+
+    DArray<Variable> field;
+    while (cursor < tokens.size && tokens.get(cursor).type != TOKEN_TYPE_BRACE_CLOSE) {
+        if (!tokens.get(cursor).type != TOKEN_TYPE_IDENT) {
+            return nullptr;
+        }
+
+        Variable variable = {};
+        variable.name = tokens.get(cursor).token_string;
+        cursor ++;
+        
+        if (!consume(TOKEN_TYPE_COLON)) {
+            return nullptr;
+        }
+
+        if (!is_type_token(tokens.get(cursor).type)) {
+            return nullptr;
+        }
+
+        variable.type_name = tokens.get(cursor).token_string;
+        cursor ++;
+
+        field.add(variable);
+    }
+
+    if (!consume(TOKEN_TYPE_BRACE_CLOSE)) {
+        return nullptr;
+    }
+
+    return new StmtDeclType(name, field, flags);
+}
+
+StmtAssignment* Parser::parse_assignment() {
+    return nullptr;
+}
+
+StmtIf* Parser::parse_if() {
+    return nullptr;
+}
+
+StmtFor* Parser::parse_for() {
+    return nullptr;
+}
+
+StmtWhile* Parser::parse_while() {
+    return nullptr;
+}
+
+
+bool is_type_token(Token_Type type)
+{
+    return type == TOKEN_TYPE_INT || type == TOKEN_TYPE_FLOAT || type == TOKEN_TYPE_BOOL
+        || type == TOKEN_TYPE_IDENT;
+}
+
+bool Parser::consume(Token_Type type)
+{
+    bool match = (tokens.get(cursor).type == type);
+    if (match)
+    {
+        cursor++;
+    }
+    return match;
+}
+
 bool Value::evaluate_truth_value() {
     switch (type) {
         case Var_Type_Boolean: return boolean;
@@ -11,4 +289,234 @@ bool Value::evaluate_truth_value() {
     }
 
     panic("Unknown value type");
+}
+
+DArray<Token> tokenize(String expression)
+{
+    auto tokens = DArray<Token>(8);
+
+#define ADD_TOKEN(p_token_type, p_token_string) tokens.add(Token(make_string(p_token_string), p_token_type, cursor)); cursor++;
+
+    int cursor = 0;
+    while (cursor < expression.size)
+    {
+        char ch = expression.data[cursor];
+
+        switch (ch)
+        {
+            case '+':
+                ADD_TOKEN(TOKEN_TYPE_PLUS, "+")
+                break;
+            case '-':
+                ADD_TOKEN(TOKEN_TYPE_MINUS, "-")
+                break;
+            case '*':
+                ADD_TOKEN(TOKEN_TYPE_STAR, "*")
+                break;
+            case '/':
+                ADD_TOKEN(TOKEN_TYPE_SLASH, "/")
+                break;
+            case '%':
+                ADD_TOKEN(TOKEN_TYPE_PERCENT, "%")
+                break;
+            case ',':
+                ADD_TOKEN(TOKEN_TYPE_COMMA, ",")
+                break;
+            case ':':
+                ADD_TOKEN(TOKEN_TYPE_COLON, ":")
+                break;
+            case ';':
+                ADD_TOKEN(TOKEN_TYPE_SEMICOLON, ";")
+                break;
+            case '&':
+                ADD_TOKEN(TOKEN_TYPE_AMPERSAND, "&")
+                break;
+            case '(':
+                ADD_TOKEN(TOKEN_TYPE_PAREN_OPEN, "(")
+                break;
+            case ')':
+                ADD_TOKEN(TOKEN_TYPE_PAREN_CLOSE, ")")
+                break;
+            case '{':
+                ADD_TOKEN(TOKEN_TYPE_BRACE_OPEN, "{")
+                break;
+            case '}':
+                ADD_TOKEN(TOKEN_TYPE_BRACE_CLOSE, "}")
+                break;
+            case '?':
+				ADD_TOKEN(TOKEN_TYPE_QUESTION_MARK, "?")
+				break;
+            case '!': {
+                if (expression.data[cursor+1] == '=')
+                {
+                    ADD_TOKEN(TOKEN_TYPE_EXCLAMATION_EQUALS, "!=")
+                }
+                else
+                {
+                    ADD_TOKEN(TOKEN_TYPE_EXCLAMATION, "!")
+                }
+                break;
+            }
+            case '=': {
+                if (expression.data[cursor+1] == '=')
+                {
+                    ADD_TOKEN(TOKEN_TYPE_EQUALS_EQUALS, "==")
+                }
+                else
+                {
+                    ADD_TOKEN(TOKEN_TYPE_EQUALS, "=")
+                }
+                break;
+            }
+            case '>': {
+                if (expression.data[cursor+1] == '=')
+                {
+                    ADD_TOKEN(TOKEN_TYPE_GREATER_EQUALS, ">=");
+                }
+                else
+                {
+                    ADD_TOKEN(TOKEN_TYPE_GREATER, ">")
+                }
+                break;
+            }
+            case '<': {
+                if (expression.data[cursor+1] == '=')
+                {
+                    ADD_TOKEN(TOKEN_TYPE_LESS_EQUALS, "<=");
+                }
+                else
+                {
+                    ADD_TOKEN(TOKEN_TYPE_LESS, "<");
+                }
+                break;
+            }
+            default:
+            {
+                if (is_space(ch))
+                {
+                    while (is_space(ch))
+                    {
+                        ch = expression.data[cursor];
+                        cursor++;
+                    }
+                    continue;
+                }
+
+                const auto is_ident_character = [](char ch){return is_alpha(ch) || ch == '_';};
+                if (is_ident_character(ch))
+                {
+                    int start = cursor;
+                    while (is_ident_character(ch) || is_digit(ch))
+                    {
+                        cursor++;
+                        ch = expression.data[cursor];
+                    }
+
+                    String ident = string_slice(expression, start, cursor);
+                    String builtin_ = String("builtin");
+                    String proc_ = String("proc");
+                    String if_ = String("if");
+                    String else_ = String("else");
+                    String for_ = String("for");
+                    String while_ = String("while");
+                    String var_ = String("var");
+                    String type_ = String("type");
+                    String struct_ = String("struct");
+                    String enum_ = String("enum");
+                    String int_ = String("int");
+                    String float_ = String("float");
+                    String bool_ = String("bool");
+
+                    if (string_compare(builtin_, ident)) {
+                        tokens.add(Token(builtin_, TOKEN_TYPE_BUILTIN, cursor));
+                    }
+                    else if (string_compare(proc_, ident)) {
+                        tokens.add(Token(proc_, TOKEN_TYPE_PROC, cursor));
+                    }
+                    else if (string_compare(if_, ident)) {
+                        tokens.add(Token(if_, TOKEN_TYPE_IF, cursor));
+                    }
+                    else if (string_compare(else_, ident)) {
+                        tokens.add(Token(else_, TOKEN_TYPE_ELSE, cursor));
+                    }
+                    else if (string_compare(for_, ident)) {
+                        tokens.add(Token(for_, TOKEN_TYPE_FOR, cursor));
+                    }
+                    else if (string_compare(while_, ident)) {
+                        tokens.add(Token(while_, TOKEN_TYPE_WHILE, cursor));
+                    }
+                    else if (string_compare(var_, ident)) {
+                        tokens.add(Token(var_, TOKEN_TYPE_VAR, cursor));
+                    }
+                    else if (string_compare(type_, ident)) {
+                        tokens.add(Token(type_, TOKEN_TYPE_TYPE, cursor));
+                    }
+                    else if (string_compare(struct_, ident)) {
+                        tokens.add(Token(struct_, TOKEN_TYPE_STRUCT, cursor));
+                    }
+                    else if (string_compare(enum_, ident)) {
+                        tokens.add(Token(enum_, TOKEN_TYPE_ENUM, cursor));
+                    }
+                    else if (string_compare(int_, ident)) {
+                        tokens.add(Token(int_, TOKEN_TYPE_INT, cursor));
+                    }
+                    else if (string_compare(float_, ident)) {
+                        tokens.add(Token(float_, TOKEN_TYPE_FLOAT, cursor));
+                    }
+                    else if (string_compare(bool_, ident)) {
+                        tokens.add(Token(bool_, TOKEN_TYPE_BOOL, cursor));
+                    }
+                    else {
+                        tokens.add(Token(ident, TOKEN_TYPE_IDENT, cursor));
+                    }
+                }
+                else if (is_digit(ch))
+                {
+                    int start = cursor;
+                    while (is_digit(ch)) { cursor++; ch = expression.data[cursor]; }
+
+                    if (ch == '.')
+                    {
+                        cursor++;
+                        ch = expression.data[cursor];
+                        while (is_digit(ch)) { cursor++; ch = expression.data[cursor]; }
+                        String ident = string_slice(expression, start, cursor);
+                        tokens.add(Token(ident, TOKEN_TYPE_LITERAL_FLOAT, cursor));
+                    }
+                    else
+                    {
+                        String ident = string_slice(expression, start, cursor);
+                        tokens.add(Token(ident, TOKEN_TYPE_LITERAL_INT, cursor));
+                    }
+                }
+                else if (ch == '"')
+                {
+                    int start = cursor + 1;
+                    cursor++;
+                    while (ch != '"')
+                    {
+                        if (cursor >= expression.size)
+                        {
+                            fprintf(stderr, "Unterminated string literal\n");
+                            break;
+                        }
+                        cursor++;
+                        ch = expression.data[cursor];
+                    }
+
+                    String s_literal = string_slice(expression, start, cursor);
+                    tokens.add(Token(s_literal, TOKEN_TYPE_LITERAL_STRING, start));
+                }
+                else {
+                    fprintf(stderr, "Unknown character %c", ch);
+                    cursor++;
+                }
+            }
+        }
+    }
+
+    tokens.add(Token(make_string("END"), TOKEN_TYPE_END, cursor));
+    tokens.add(Token(make_string("END"), TOKEN_TYPE_END, cursor));
+
+    return tokens;
 }

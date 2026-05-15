@@ -23,6 +23,11 @@ enum UiElementId {
     MainEditor,
 };
 
+struct DragInfo {
+    vec2 start = vec2();
+    bool drag = false;
+};
+
 struct Label {
     Text text = {};
     vec2 position = {};  // center
@@ -253,6 +258,7 @@ struct TextEditor {
     float title_height = 0;
     Color title_color = Color();  // color of the title text
     Color title_bar_color = Color();
+    DragInfo drag = {};
 
     TextEditor() {}
     TextEditor(Rectangle area, AssetId font, Color background_color, Color textColor, Color titleColor, Color titleBarColor, String editor_name, float title_height)
@@ -271,6 +277,19 @@ struct TextEditor {
         title_color(titleColor),
         title_bar_color(titleBarColor)
     {}
+
+    Rectangle get_title_area() const {
+        return Rectangle(field.m_area.x, field.m_area.y - (field.m_area.h + title_height) / 2, field.m_area.w, title_height);
+    }
+
+    Rectangle get_text_area() const {
+        return field.m_area;
+    }
+
+    void set_position(vec2 pos) {
+        field.m_area.x = pos.x;
+        field.m_area.y = pos.y;
+    }
 };
 
 #define DROP_DOWN_LIST_SELECTED_SENTINEL -1

@@ -27,7 +27,7 @@ bool Application::initialize()
 
         SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE |
                                 SDL_WINDOW_HIDDEN;  // show the window after the initialization is complete
-        SDL_Window* window = SDL_CreateWindow("game", 1440, 810, flags);
+        SDL_Window* window = SDL_CreateWindow("game", INIT_WINDOW_WIDTH, INIT_WINDOW_HEIGHT, flags);
         if (!window)
         {
             SDL_Log("Failed to create window with SDL: %s\n", SDL_GetError());
@@ -170,14 +170,20 @@ void Application::handle_events()
             {
                 SDL_MouseButtonEvent mouse = e.button;
                 m_input.mouse.down = true;
-                mouse_input();
+                m_input.mouse.buttonFlags = SDL_GetMouseState(&m_input.mouse.pos.x, &m_input.mouse.pos.y);
+
+                on_mouse_down();
+
                 break;
             }
             case SDL_EVENT_MOUSE_BUTTON_UP:
             {
                 SDL_MouseButtonEvent mouse = e.button;
                 m_input.mouse.down = false;
-                // @todo on mouse up
+                m_input.mouse.buttonFlags = SDL_GetMouseState(&m_input.mouse.pos.x, &m_input.mouse.pos.y);
+
+                on_mouse_up();
+
                 break;
             }
             case SDL_EVENT_MOUSE_MOTION:
@@ -355,7 +361,7 @@ bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
     return false;
 }
 
-bool Application::mouse_input()
+bool Application::on_mouse_down()
 {
     vec2 mouse_pos = m_input.mouse.pos;
     vec2 render_size = m_render.render_size;
@@ -378,66 +384,70 @@ bool Application::mouse_input_game()
     vec2 mouse_pos = m_input.mouse.pos;
     UiState& ui = m_ui[UiGame];
 
-    for (int it = 0; it < ui.text_field.size(); it++)
+    if (m_input.mouse.buttonFlags & MOUSE_LEFT)
     {
-        auto& field = ui.text_field.get_ref(it);
-        Rectangle area = field.m_area;
-        if (area.contains_centered(mouse_pos)) {
-            text_input_start();
-
-            ui.text_input_target.index = it;
-            ui.text_input_target.flags = TEXT_INPUT_TARGET_IS_VALID;
-
-            vec2 relative = m_input.mouse.pos - area.get_top_left();
-            Font font = m_catalog.get_font(field.fontId);
-            field.m_selection_start = field.calculate_cursor_from_mouse(relative, field.get_string(), font, true);
-            field.m_selection_end = field.m_selection_start;
-
-            return true;
-        }
-    }
-
-    for (int it = 0; it < ui.editor.size(); it++) {
-        auto& editor = ui.editor.get_ref(it);
-        auto& field = editor.field;
-        Rectangle area = field.m_area;
-        if (area.contains_centered(mouse_pos))
+        for (int it = 0; it < ui.text_field.size(); it++)
         {
-            text_input_start();
+            auto& field = ui.text_field.get_ref(it);
+            Rectangle area = field.m_area;
+            if (area.contains_centered(mouse_pos)) {
+                text_input_start();
 
-            ui.text_input_target.index = it;
-            ui.text_input_target.flags = TEXT_INPUT_TARGET_IS_VALID | TEXT_INPUT_TARGET_IS_EDITOR;
+                ui.text_input_target.index = it;
+                ui.text_input_target.flags = TEXT_INPUT_TARGET_IS_VALID;
 
-            vec2 relative = m_input.mouse.pos - area.get_top_left();
-            Font font = m_catalog.get_font(field.fontId);
-            field.m_selection_start = field.calculate_cursor_from_mouse(relative, field.get_string(), font, true);
-            field.m_selection_end = field.m_selection_start;
+                vec2 relative = m_input.mouse.pos - area.get_top_left();
+                Font font = m_catalog.get_font(field.fontId);
+                field.m_selection_start = field.calculate_cursor_from_mouse(relative, field.get_string(), font, true);
+                field.m_selection_end = field.m_selection_start;
 
-            return true;
+                return true;
+            }
         }
 
-        Rectangle title_area = Rectangle(area.x, area.y - (area.h + editor.title_height) / 2, area.w, editor.title_height);
-        if (title_area.contains_centered(mouse_pos))
+        for (int it = 0; it < ui.editor.size(); it++) {
+            auto& editor = ui.editor.get_ref(it);
+            auto& field = editor.field;
+            Rectangle area = field.m_area;
+            if (area.contains_centered(mouse_pos))
+            {
+                text_input_start();
+
+                ui.text_input_target.index = it;
+                ui.text_input_target.flags = TEXT_INPUT_TARGET_IS_VALID | TEXT_INPUT_TARGET_IS_EDITOR;
+
+                vec2 relative = m_input.mouse.pos - area.get_top_left();
+                Font font = m_catalog.get_font(field.fontId);
+                field.m_selection_start = field.calculate_cursor_from_mouse(relative, field.get_string(), font, true);
+                field.m_selection_end = field.m_selection_start;
+
+                return true;
+            }
+
+            Rectangle title_area = editor.get_title_area();
+            if (title_area.contains_centered(mouse_pos))
+            {
+                editor.drag.drag = true;
+                editor.drag.start = mouse_pos - title_area.get_top_left();
+                return true;
+            }
+        }
+
         {
-            // @todo drag
-            return true;
+            ui.text_input_target = {};
+            text_input_stop();
         }
-    }
 
-    {
-        ui.text_input_target = {};
-        text_input_stop();
-    }
-
-    for (auto& button : ui.button) {
-        Rectangle area = Rectangle(button.position, button.scale);
-        if (area.contains_centered(mouse_pos)) {
-            switch (button.id) {
+        for (auto& button : ui.button) {
+            Rectangle area = Rectangle(button.position, button.scale);
+            if (area.contains_centered(mouse_pos)) {
+                switch (button.id) {
                 case BackButton:
                 {
                     switch_modes(ModeMenu);
                     switch_menu(MenuMain);
                     break;
+                }
                 }
             }
         }
@@ -456,10 +466,12 @@ bool Application::mouse_input_main_menu()
     vec2 mouse_pos = m_input.mouse.pos;
     UiState& ui = m_ui[UiMainMenu];
 
-    for (auto& button : ui.button) {
-        Rectangle area = Rectangle(button.position, button.scale);
-        if (area.contains_centered(mouse_pos)) {
-            switch (button.id) {
+    if (m_input.mouse.buttonFlags & MOUSE_LEFT)
+    {
+        for (auto& button : ui.button) {
+            Rectangle area = Rectangle(button.position, button.scale);
+            if (area.contains_centered(mouse_pos)) {
+                switch (button.id) {
                 case PlayButton: {
                     switch_modes(ModeGame);
                     break;
@@ -471,6 +483,7 @@ bool Application::mouse_input_main_menu()
                 case QuitButton: {
                     quit = true;  // quit at the end of frame
                     break;
+                }
                 }
             }
         }
@@ -484,14 +497,17 @@ bool Application::mouse_input_settings()
     vec2 mouse_pos = m_input.mouse.pos;
     UiState& ui = m_ui[UiSettings];
 
-    for (auto& button : ui.button) {
-        Rectangle area = Rectangle(button.position, button.scale);
-        if (area.contains_centered(mouse_pos)) {
-            switch (button.id) {
+    if (m_input.mouse.buttonFlags & MOUSE_LEFT)
+    {
+        for (auto& button : ui.button) {
+            Rectangle area = Rectangle(button.position, button.scale);
+            if (area.contains_centered(mouse_pos)) {
+                switch (button.id) {
                 case BackButton:
                 {
                     switch_menu(MenuMain);
                     break;
+                }
                 }
             }
         }
@@ -514,6 +530,7 @@ void Application::update()
     m_time = time;
     m_time_seconds = time_sec;
 
+    update_ui_pos();
     timeout();
 }
 
@@ -539,6 +556,37 @@ void Application::update_ui_state(vec2 window_size) {
         float y_factor = window_size.y / assumed.y;
         if ((fabsf(x_factor - 1.0f) >= 0.1f) || (fabsf(y_factor - 1.0f) >= 0.1f)) {
             m_ui[i].update_state(window_size, m_render.renderer, m_catalog);
+        }
+    }
+}
+
+void Application::update_ui_pos()
+{
+    vec2 mouse_pos = m_input.mouse.pos;
+
+    UiState& ui = get_active_ui();
+    for (auto& editor : ui.editor)
+    {
+        if (editor.drag.drag)
+        {
+            Rectangle area = editor.get_text_area();
+            vec2 half_scale = vec2(area.w / 2, area.h / 2);
+            vec2 dst = (mouse_pos - editor.drag.start) + half_scale;
+            dst.y += editor.title_height;
+            editor.set_position(dst);
+        }
+    }
+}
+
+void Application::on_mouse_up()
+{
+    if (m_input.mouse.buttonFlags & MOUSE_LEFT)
+    {
+        UiState& ui = get_active_ui();
+        for (auto& editor : ui.editor) {
+            if (editor.drag.drag) {
+                editor.drag.drag = false;
+            }
         }
     }
 }
@@ -754,7 +802,7 @@ void Application::render_slider(Rectangle area, vec2 knob_scale, float value, Co
 void Application::render_text_editor(const TextEditor& editor) const
 {
     Rectangle text_area = editor.field.m_area;
-    Rectangle title_area = Rectangle(text_area.x, text_area.y - (text_area.h + editor.title_height) / 2, text_area.w, editor.title_height);
+    Rectangle title_area = editor.get_title_area();
     render_textured_rectangle(title_area, editor.title_texture, editor.title_bar_color);
 
     render_text_field(editor.field);

@@ -91,6 +91,7 @@ private:
 
     void timeout();
     void update_ui_state(vec2 window_size);
+    void update_ui_pos();
 
     void set_event_active(int event_index, double timeout_seconds);
     void set_event_deactive(int event_index);
@@ -104,7 +105,8 @@ private:
 
     void draw_ui_state(const UiState& state);
 
-    bool mouse_input();
+    bool on_mouse_down();
+    void on_mouse_up();
     bool mouse_input_game();
     bool mouse_input_menu();
     bool mouse_input_main_menu();

@@ -23,12 +23,12 @@ extern "C" {
             double real;
         };
 
-        Value() : type(Var_Type_Integer), integer(0) {}  // invalid state
-        Value(bool b) : type(Var_Type_Boolean), boolean(b) {}
-        Value(long long integer) : type(Var_Type_Integer), integer(integer) {}
-        Value(double real) : type(Var_Type_Real), real(real) {}
-
         bool evaluate_truth_value();
+    };
+
+    struct InterpString {
+        const char* data;
+        size_t size;
     };
 
     struct Interp;
@@ -39,14 +39,13 @@ extern "C" {
     Interp* interp_create();
     void interp_destroy(Interp* interp);
     Interp* interp_copy(Interp* interp);
-    void interp_reset(Interp* interp);
     bool interp_check_program_string(const Interp* interp_or_null, const char* program_string, int length);
     bool interp_set_program(Interp* interp, const char* program_string, int length);
     void interp_run_program(Interp* interp);
     int interp_register_variable(Interp* interp, const char* name, int length, Variable_Type type);
     bool interp_set_variable_value(Interp* interp, int variable, Value value);
     Value interp_get_variable_value(const Interp* interp, int variable);
-    const char* interp_get_variable_name_at_index(const Interp* interp, int index);
+    InterpString interp_get_variable_name(const Interp* interp, int variable);
     int interp_get_variable_count(const Interp* interp);
     int interp_register_function(Interp* interp, const char* name, int length, Variable_Type type);
     bool interp_set_function_callback(Interp* interp, int variable, LangFunction callback);

@@ -4,6 +4,7 @@
 #include "common.hpp"
 #include "template.hpp"
 #include "expr.hpp"
+#include "lang_common.hpp"
 
 enum class StatementKind {
     DeclVar,
@@ -19,6 +20,10 @@ enum class StatementKind {
 
 struct Statement {
     StatementKind kind;
+};
+
+struct ProgramTree {
+    DArray<Statement*> statements = {};
 };
 
 struct StmtBlock : Statement {
@@ -104,12 +109,12 @@ struct StmtAssignment : Statement {
 
 struct StmtIf : Statement {
     Expr* condition = nullptr;
-    StmtBlock* then_ = nullptr;
-    StmtBlock* else_ = nullptr;
+    Statement* then_ = nullptr;
+    Statement* else_ = nullptr;
     StmtIf() {
         kind = StatementKind::If_;
     }
-    StmtIf(Expr* cond, StmtBlock* th, StmtBlock* els) : condition(cond), then_(th), else_(els) {
+    StmtIf(Expr* cond, Statement* th, Statement* els) : condition(cond), then_(th), else_(els) {
         kind = StatementKind::If_;
     }
 };
@@ -118,22 +123,22 @@ struct StmtFor : Statement {
     Expr* start = nullptr;
     Expr* condition = nullptr;
     Expr* end = nullptr;
-    StmtBlock* body = nullptr;
+    Statement* body = nullptr;
     StmtFor() {
         kind = StatementKind::For_;
     }
-    StmtFor(Expr* start, Expr* cond, Expr* end, StmtBlock* body) : start(start), condition(cond), end(end), body(body) {
+    StmtFor(Expr* start, Expr* cond, Expr* end, Statement* body) : start(start), condition(cond), end(end), body(body) {
         kind = StatementKind::For_;
     }
 };
 
 struct StmtWhile : Statement {
     Expr* condition = nullptr;
-    StmtBlock* body = nullptr;
+    Statement* body = nullptr;
     StmtWhile() {
         kind = StatementKind::While_;
     }
-    StmtWhile(Expr* cond, StmtBlock* body) : condition(cond), body(body) {
+    StmtWhile(Expr* cond, Statement* body) : condition(cond), body(body) {
         kind = StatementKind::While_;
     }
 };

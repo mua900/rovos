@@ -3,6 +3,7 @@
 
 #include "expr.hpp"
 #include "statement.hpp"
+#include "lang_common.hpp"
 
 struct Error {
     const char* message;
@@ -15,12 +16,12 @@ struct Error {
 struct Parser {
     Parser() {}
 
-    Expr* parse(String expression);
+    bool parse(String program, ProgramTree& tree);
 
     void set_symbols(Array<Variable> p_symbols) { symbols = p_symbols; }
 
-    bool syntax_check(String expression);
-    bool check_expression_string(String expression);
+    bool syntax_check(String program);
+    bool check_program(String program);
 
     Error get_error() const { return parser_error; }
     void clear_error() { parser_error = Error(); }
@@ -37,7 +38,7 @@ private:
     StmtDeclVar* parse_variable_declaration();
     StmtDeclProc* parse_procedure_declaration(bool builtin);
     StmtDeclType* parse_type_declaration();
-    StmtAssignment* parse_assignment();
+    // StmtAssignment* parse_assignment();
     StmtIf* parse_if();
     StmtFor* parse_for();
     StmtWhile* parse_while();

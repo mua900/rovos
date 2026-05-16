@@ -263,10 +263,27 @@ struct String_Builder {
         }
     }
 
+    String_Builder(const String_Builder& other) {
+        free_buffer();
+
+        ensure_size(other.buffer_capacity);
+        ASSERT(buffer && other.buffer);
+        memcpy(buffer, other.buffer, other.cursor);
+        cursor = other.cursor;
+    }
+
+    void operator=(const String_Builder& other) {
+        free_buffer();
+
+        ensure_size(other.buffer_capacity);
+        ASSERT(buffer && other.buffer);
+        memcpy(buffer, other.buffer, other.cursor);
+        cursor = other.cursor;
+    }
+
     String_Builder(String_Builder&& other) noexcept {
-        if (buffer) {
-            free(buffer);
-        }
+        free_buffer();
+
         buffer = other.buffer;
         cursor = other.cursor;
         buffer_capacity = other.buffer_capacity;
@@ -274,9 +291,8 @@ struct String_Builder {
     }
 
     void operator=(String_Builder&& other) noexcept {
-        if (buffer) {
-            free(buffer);
-        }
+        free_buffer();
+
         buffer = other.buffer;
         cursor = other.cursor;
         buffer_capacity = other.buffer_capacity;
@@ -291,6 +307,7 @@ struct String_Builder {
     int append_integer(int n);
     int append_hex(int n);
 	int append_float(float n);
+    String put_string(String s);
     const char* c_string();
     void remove(int amount);  // remove the last n characters from the buffer
     void remove_slice(int start, int end);

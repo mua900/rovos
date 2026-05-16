@@ -8,6 +8,8 @@
 #include "input.hpp"
 #include "draw.hpp"
 
+#include "language/lang.hpp"
+
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 
@@ -66,6 +68,8 @@ public:
     s64 m_time = 0;
     double m_time_seconds = 0;
 
+    DArray<Interp*> programs = {};
+
     Event_Timeout m_events[EVENT_COUNT] = {};
 
     Array<Text> m_rendered_text = {};
@@ -107,6 +111,7 @@ private:
 
     bool on_mouse_down();
     void on_mouse_up();
+
     bool mouse_input_game();
     bool mouse_input_menu();
     bool mouse_input_main_menu();

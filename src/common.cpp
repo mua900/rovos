@@ -323,7 +323,8 @@ void String_Builder::remove_slice(int start, int end)
 }
 
 void String_Builder::resize() {
-    char* nbuff = (char*) malloc(buffer_capacity * 2);
+    int ncap = buffer_capacity ? buffer_capacity * 2 : 32;
+    char* nbuff = (char*) malloc(ncap);
     if (!nbuff) panic("Malloc fail");
     if (buffer)
     {
@@ -331,7 +332,7 @@ void String_Builder::resize() {
         std::free(buffer);
     }
     buffer = nbuff;
-    buffer_capacity *= 2;
+    buffer_capacity = ncap;
 }
 
 int String_Builder::ensure_size(int size) {
@@ -339,7 +340,7 @@ int String_Builder::ensure_size(int size) {
     while (size >= buffer_capacity) {
         resize();
         count++;
-        if (count > 5) {
+        if (count > 10) {
             fprintf(stderr, "String builder buffer resize failed repeatedly: Possible memory allocation issue or corrupted buffer state.\n"
                 "Relevant: buffer_capacity: %d, cursor: %d, provided string size: %d",
                 buffer_capacity, cursor, size);
@@ -407,6 +408,14 @@ int String_Builder::append_float(float n) {
 	return len;
 }
 
+String String_Builder::put_string(String s) {
+    int c = cursor;
+    append(s);
+    // this makes compatibility with so many things much easier
+    append_char('\0');
+    return String(buffer + c, s.size);
+}
+
 int String_Builder::clear_and_append(String s) {
     cursor = 0;
     append(s);
@@ -434,7 +443,9 @@ const char* String_Builder::c_string() {
 }
 
 void String_Builder::free_buffer() {
-    std::free(this->buffer);
+    if (buffer) {
+        std::free(this->buffer);
+    }
     cursor = 0;
     buffer_capacity = 0;
     buffer = NULL;

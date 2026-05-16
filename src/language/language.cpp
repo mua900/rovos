@@ -2,6 +2,157 @@
 #include "parse.hpp"
 #include "token.hpp"
 #include "statement.hpp"
+#include "bytecode.hpp"
+
+static const char* interpLastError = nullptr;
+
+struct Interp {
+    ProgramTree tree = {};
+    Bytecode_Program program = {};
+    String_Builder buffer = {};
+};
+
+const char* interp_get_last_error() { return interpLastError; }
+Interp* interp_create() {
+    Interp* interp = new Interp;
+    return interp;
+}
+
+void interp_destroy(Interp* interp) {
+    delete interp;
+}
+
+Interp* interp_copy(Interp* interp) {
+    Interp* intr = new Interp;
+    intr->tree = interp->tree;
+    intr->program = interp->program;
+    intr->buffer = interp->buffer;
+    return intr;
+}
+
+bool interp_syntax_check(const char* program_string, int length) {
+    Parser parser = Parser();
+    String program = String(program_string, length);
+
+    return parser.syntax_check(program);
+}
+
+bool interp_set_program(Interp* interp, const char* program_string, int length) {
+    Parser parser = Parser();
+    String program = String(program_string, length);
+    ProgramTree tree = {};
+    if (!parser.parse(program, tree)) {
+        return false;
+    }
+
+    Bytecode_Program bytecode = {};
+    
+    if (!bytecode_compile_program(bytecode, tree)) {
+        return false;
+    }
+    interp->tree = tree;
+    interp->program = bytecode;
+    return true;
+}
+
+void interp_run_program(Interp* interp) {
+    bytecode_run(interp->program);
+}
+
+int interp_register_variable(Interp* interp, const char* name, int length, String type) {
+    String symbol = String(name, length);
+    symbol = interp->buffer.put_string(symbol);
+    Variable var = Variable(symbol, type);
+
+    for (int i = 0; i < interp->program.variables.size(); i++) {
+        String var_name = interp->program.variables.get(i).variable.name;
+        if (string_compare(var_name, symbol)) {
+            interpLastError = "Trying to register the same variable name more than once.";
+            return i;
+        }
+    }
+
+    int var_id = interp->program.add_symbol(var);
+    return var_id;
+}
+
+bool interp_set_variable_value(Interp* interp, int variable, Value value) {
+    if (!interp->program.variables.in_bounds(variable)) {
+        interpLastError = "Trying to set a variable out of bounds";
+        return false;
+    }
+
+    interp->program.variables.get_ref(variable).value = value;
+    return true;
+}
+
+Value interp_get_variable_value(const Interp* interp, int variable) {
+    if (!interp->program.variables.in_bounds(variable)) {
+        interpLastError = "Trying to get a variable out of bounds";
+        return Value();
+    }
+
+    return interp->program.variables.get(variable).value;
+}
+
+InterpString interp_get_variable_name(const Interp* interp, int variable) {
+    InterpString name = {};
+    if (!interp->program.variables.in_bounds(variable)) {
+        interpLastError = "Trying to get a variable's name out of bounds";
+        return name;
+    }
+
+    String n = interp->program.variables.get(variable).variable.name;
+    name.data = n.data;
+    name.size = n.size;
+    return name;
+}
+
+int interp_get_variable_count(const Interp* interp) {
+    return interp->program.variables.size();
+}
+
+int interp_register_function(Interp* interp, const char* name, int length, Variable_Type type) {
+    // @todo
+    ASSERT(false);
+    return 0;
+}
+
+bool interp_set_function_callback(Interp* interp, int variable, LangFunction callback) {
+    // @todo
+    ASSERT(false);
+    return 0;
+}
+
+LangFunction interp_get_function_callback(const Interp* interp, int variable) {
+    // @todo
+    ASSERT(false);
+    return nullptr;
+}
+
+const char* interp_get_function_name_at_index(const Interp* interp, int index) {
+    // @todo
+    ASSERT(false);
+    return nullptr;
+}
+
+int interp_get_function_count(const Interp* interp) {
+    // @todo
+    ASSERT(false);
+    return 0;
+}
+
+void interp_set_input_stream(Interp* interp, float* input_stream, int input_stream_size, int stride) {
+    interp->program.set_input_stream(InputStream(Array<float>(input_stream, input_stream_size), stride));
+}
+
+void interp_clear_input_stream(Interp* interp) {
+    interp->program.input_stream = InputStream();
+}
+
+bool Parser::parse(String program, ProgramTree& tree) {
+    return false;
+}
 
 Statement* Parser::parse_statement() {
     bool builtin = false;
@@ -219,7 +370,7 @@ StmtDeclType* Parser::parse_type_declaration() {
 
     DArray<Variable> field;
     while (cursor < tokens.size && tokens.get(cursor).type != TOKEN_TYPE_BRACE_CLOSE) {
-        if (!tokens.get(cursor).type != TOKEN_TYPE_IDENT) {
+        if (tokens.get(cursor).type != TOKEN_TYPE_IDENT) {
             return nullptr;
         }
 
@@ -248,20 +399,58 @@ StmtDeclType* Parser::parse_type_declaration() {
     return new StmtDeclType(name, field, flags);
 }
 
-StmtAssignment* Parser::parse_assignment() {
-    return nullptr;
-}
-
 StmtIf* Parser::parse_if() {
-    return nullptr;
+    if (!consume(TOKEN_TYPE_IF)) {
+        return nullptr;
+    }
+
+    Expr* condition = parse_expression();
+    if (!condition) {
+        return nullptr;
+    }
+
+    if (!consume(TOKEN_TYPE_BRACE_OPEN)) {
+        return nullptr;
+    }
+
+    Statement* then_ = parse_statement();
+    if (!then_) return nullptr;
+    Statement* else_ = nullptr;
+    if (tokens.get(cursor).type == TOKEN_TYPE_ELSE) {
+        cursor ++;
+        else_ = parse_statement();
+        if (!else_) return nullptr;
+    }
+
+    return new StmtIf(condition, then_, else_);
 }
 
 StmtFor* Parser::parse_for() {
-    return nullptr;
+    if (!consume(TOKEN_TYPE_FOR)) {
+        return nullptr;
+    }
+
+    Expr* start = parse_expression();
+    if (!start) return nullptr;
+    if (!consume(TOKEN_TYPE_SEMICOLON)) return nullptr;
+    Expr* condition = parse_expression();
+    if (!condition) return nullptr;
+    if (!consume(TOKEN_TYPE_SEMICOLON)) return nullptr;
+    Expr* end = parse_expression();
+    if (!end) return nullptr;
+
+    Statement* body = parse_statement();
+
+    return new StmtFor(start, condition, end, body);
 }
 
 StmtWhile* Parser::parse_while() {
-    return nullptr;
+    if (!consume(TOKEN_TYPE_WHILE)) return nullptr;
+    Expr* condition = parse_expression();
+    if (!condition) return nullptr;
+
+    Statement* body = parse_statement();
+    return new StmtWhile(condition, body);
 }
 
 

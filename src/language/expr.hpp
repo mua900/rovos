@@ -31,18 +31,6 @@ enum Op_Binary {
     Binop_Le,
 };
 
-struct Variable {
-    String name = {};
-    String type_name = {};
-
-    Variable() {}
-    Variable(String n, String p_type) : name(n), type_name(p_type) {}
-
-    bool operator==(const Variable& other) const {
-        return type_name == other.type_name && name == other.name;
-    }
-};
-
 enum class ExprKind {
     Literal,
     Variable,
@@ -184,7 +172,5 @@ struct Expr_Tuple : Expr {
 		}
 	}
 };
-
-Find_Result find_symbol(const Array<Variable> symbols, const String name);
 
 #endif // _EXPR_H

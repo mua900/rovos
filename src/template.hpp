@@ -10,7 +10,7 @@ private:
 	int m_cap = 0;
 
 public:
-	const T const * data() const { return m_data; }
+	const T * data() const { return m_data; }
 	int size() const { return m_size; }
 
 	DArray() {}

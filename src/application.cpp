@@ -247,6 +247,8 @@ bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
                 }
                 Font font = m_catalog.get_font(m_font);
                 field->calculate_cursor_from_selection(field->get_string(), font, true);
+
+                
             }
 
             return true;
@@ -409,6 +411,12 @@ bool Application::mouse_input_game()
             auto& editor = ui.editor.get_ref(it);
             auto& field = editor.field;
             Rectangle area = field.m_area;
+
+            if (editor.drag.drag) {
+                editor.drag.drag = false;
+                continue;
+            }
+
             if (area.contains_centered(mouse_pos))
             {
                 text_input_start();

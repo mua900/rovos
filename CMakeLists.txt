@@ -45,6 +45,9 @@ add_library(language STATIC
 	src/language/expr.hpp
 	src/language/statement.hpp
 	src/language/lang.hpp
+	src/language/lang_common.hpp
+	src/language/function.hpp
+	src/language/bytecode.hpp
 	src/language/language.cpp
 )
 

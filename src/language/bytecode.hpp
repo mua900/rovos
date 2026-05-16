@@ -91,7 +91,7 @@ enum Bytecode_Opcode : u16
 	INSTR_CALL_BUILTIN_SIMPLE,	// call_builtin func_id freg
 	// calls the function identified by func_id and place the result in the freg
 	// the arguments are placed on the stack per call and used by the called function
-	INSTR_BUILTIN_CALL,			// call func_id freg
+	INSTR_CALL_BUILTIN,			// call func_id freg
 	// calls the function identified by func_id. Read arguments from the stack.
 	// and place the results to the stack
 	INSTR_CALL_BUILTIN_STACK_RETURN,  // call func_id
@@ -99,7 +99,7 @@ enum Bytecode_Opcode : u16
 	// the same as above but the called function is also in bytecode and the return location and flags (in that order) are saved to stack
 	INSTR_CALL_SIMPLE,
 	INSTR_CALL,
-	INSTR_STACK_RETURN,
+	INSTR_CALL_STACK_RETURN,
 
 	// push a value to the value stack
 	INSTR_PUSH,			// push freg
@@ -108,6 +108,8 @@ enum Bytecode_Opcode : u16
 
 	// pop the flags and return address (in that order) from the stack and jump to the return address.
 	INSTR_RET,			// ret freg
+
+	INSTR_HALT,         // halt
 
 	INSTR_COUNT,
 
@@ -146,6 +148,7 @@ struct Bytecode_Instr {
 	Bytecode_Opcode opcode = {};
 	u16 op0 = 0;
 	u16 op1 = 0;
+	u16 op2 = 0;
 
 	Bytecode_Instr() {}
 	Bytecode_Instr(Bytecode_Opcode p_opcode)
@@ -159,7 +162,13 @@ struct Bytecode_Instr {
 	Bytecode_Instr(Bytecode_Opcode p_opcode, u16 operand_0, u16 operand_1)
 		: opcode(p_opcode), op0(operand_0), op1(operand_1)
 	{}
+
+	Bytecode_Instr(Bytecode_Opcode p_opcode, u16 operand_0, u16 operand_1, u16 operand_2)
+		: opcode(p_opcode), op0(operand_0), op1(operand_1), op2(operand_2)
+	{}
 };
+
+static_assert(sizeof(Bytecode_Instr) == 8);
 
 struct Constant_Block {
 	DArray<double> real = {};
@@ -252,7 +261,7 @@ struct Bytecode_Program {
 	u16 get_value_to_float_register(Value_Location_Info val_info);
 	u16 get_value_to_integer_register(Value_Location_Info val_info);
 
-	void emit_bytecode_instruction(Bytecode_Opcode opcode, u16 arg0, u16 arg1);
+	void emit_bytecode_instruction(Bytecode_Opcode opcode, u16 arg0, u16 arg1, u16 arg2);
 
 	Value_Location_Info emit_load_constant(Constant_Id value_id);
 
@@ -265,11 +274,6 @@ struct Bytecode_Program {
 	void set_input_stream(InputStream istream);
 
 	void set_builtin_function(InterpFunction  implementation, u32 builtin_function);
-	void step_time(double time);
-	void set_sample_time(double sample_time);
-	void set_sample_rate(double sample_rate);
-	double get_sample_rate() const;
-	double get_sample_time() const;
 
 	void print_program() const;
 };

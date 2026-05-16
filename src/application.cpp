@@ -83,6 +83,11 @@ bool Application::initialize()
 
     init_ui();
 
+    // scripts
+    {
+        scripts.add(Script());
+    }
+
     quit = false;
 
     return true;
@@ -244,25 +249,6 @@ bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
                 if (field)
                 {
                     field->insert_line();
-                    Font font = m_catalog.get_font(m_font);
-                    // field->calculate_cursor_from_selection(field->get_string(), font, true);
-
-                    /*
-                    String program_string = field->get_string();
-
-                    Script scrpt;
-                    if (scrpt.language == ScriptLanguage::LUA) {
-                        
-                    }
-                    else if (scrpt.language == ScriptLanguage::LANGUAGE) {
-                        if (interp_syntax_check(program_string.data, program_string.size)) {
-                            interp_set_program(scrpt.interp, program_string.data, program_string.size);
-                        }
-                        else {
-                            // @todo display error
-                        }
-                    }
-                    */
                 }
             }
 
@@ -670,6 +656,7 @@ void Application::init_ui()
     Color title_bar_color = Color(0x33, 0x55, 0x66);
     auto mainEditor = TextEditor(MainEditor, editor_area, m_font, editor_background, editor_text_color, title_color, title_bar_color, String("Main Editor"), 32);
     mainEditor.title_texture = render_text(m_render.renderer, mainEditor.name.to_string(), font, title_color);
+    mainEditor.user.number = 0;  // which script this editor is associated with
 
     m_ui[UiGame].button.add(backToMenu);
     m_ui[UiGame].editor.add(mainEditor);
@@ -935,4 +922,20 @@ void Application::toggle_text_input()
     {
         text_input_stop();
     }
+}
+
+bool Script::set_source(ScriptLanguage language, String source) {
+    if (language == ScriptLanguage::LANGUAGE) {
+        Interp* interp = interp_create();
+        if (!interp) return false;
+        if (!interp_set_program(interp, source.data, source.size)) return false;
+
+        return true;
+    }
+    else if (language == ScriptLanguage::LUA) {
+
+    }
+
+    ASSERT(false);
+    return false;
 }

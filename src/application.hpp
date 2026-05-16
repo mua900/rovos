@@ -65,6 +65,9 @@ struct Script {
         lua_State* lua;
         Interp* interp;
     };
+
+    Script() {}
+    bool set_source(ScriptLanguage language, String source);
 };
 
 class Application {

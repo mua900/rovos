@@ -1787,3 +1787,141 @@ DArray<Token> tokenize(String expression)
 
     return tokens;
 }
+
+
+void get_default_builtin_functions(Function* list)
+{
+    static Variable_Type single_value[1] = { Var_Type_Real };
+    static Variable_Type two_values[2] = { Var_Type_Real, Var_Type_Real };
+    static Variable_Type three_values[3] = { Var_Type_Real, Var_Type_Real, Var_Type_Real };
+
+    list[BUILTIN_FUNC_ABS] = Function(
+        st_fabs,
+        FunctionSignature(String("abs"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_SIGN] = Function(
+        st_get_sign,
+        FunctionSignature(String("sign"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_CEIL] = Function(
+        st_ceil,
+        FunctionSignature(String("ceil"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_FLOOR] = Function(
+        st_floor,
+        FunctionSignature(String("floor"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_SIN] = Function(
+        st_sin,
+        FunctionSignature(String("sin"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_COS] = Function(
+        st_cos,
+        FunctionSignature(String("cos"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_ARCSIN] = Function(
+        st_asin,
+        FunctionSignature(String("asin"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_ARCCOS] = Function(
+        st_acos,
+        FunctionSignature(String("acos"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_EXP] = Function(
+        st_exp,
+        FunctionSignature(String("exp"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_SMOOTHSTEP] = Function(
+        st_smoothstep,
+        FunctionSignature(String("smoothstep"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_CLAMP] = Function(
+        st_clamp,
+        FunctionSignature(String("clamp"), make_array(single_value), make_array(three_values))
+    );
+    list[BUILTIN_FUNC_POW] = Function(
+    	st_pow,
+    	FunctionSignature(String("pow"), make_array(single_value), make_array(two_values))
+    );
+    list[BUILTIN_FUNC_FRACT] = Function(
+    	st_fract,
+    	FunctionSignature(String("fract"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_MIX] = Function(
+        st_mix,
+        FunctionSignature(String("mix"), make_array(single_value), make_array(three_values))
+    );
+    list[BUILTIN_FUNC_SAW] = Function(
+        st_saw,
+        FunctionSignature(String("saw"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_SQUARE] = Function(
+        st_square,
+        FunctionSignature(String("square"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_TRIANGLE] = Function(
+        st_triangle,
+        FunctionSignature(String("triangle"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_TAN] = Function(
+        st_tan,
+        FunctionSignature(String("tan"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_ARCTAN] = Function(
+        st_atan,
+        FunctionSignature(String("atan"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_LOG] = Function(
+        st_log,
+        FunctionSignature(String("log"), make_array(single_value), make_array(single_value))
+    );
+    list[BUILTIN_FUNC_MAX] = Function(
+        st_max,
+        FunctionSignature(String("max"), make_array(single_value), make_array(two_values))
+    );
+    list[BUILTIN_FUNC_MIN] = Function(
+        st_min,
+        FunctionSignature(String("min"), make_array(single_value), make_array(two_values))
+    );
+}
+
+bool is_builtin_function(const Expr_Call* call) {
+    return call->fn_id < BUILTIN_FUNC_COUNT;
+}
+
+bool is_builtin_variable(const Expr_Variable* var)
+{
+    return var->var_id < BUILTIN_VARIABLE_COUNT;
+}
+
+const char* get_builtin_function_name(Builtin_Func_Type builtin)
+{
+    switch (builtin)
+    {
+        case BUILTIN_FUNC_EXP:         { return "exponential"; }
+        case BUILTIN_FUNC_ABS:         { return "absolute value"; }
+        case BUILTIN_FUNC_SIGN:        { return "sign"; }
+        case BUILTIN_FUNC_CEIL:        { return "ceil"; }
+        case BUILTIN_FUNC_FLOOR:       { return "floor"; }
+        case BUILTIN_FUNC_SIN:         { return "sin"; }
+        case BUILTIN_FUNC_COS:         { return "cos"; }
+        case BUILTIN_FUNC_TAN:         { return "tan"; }
+        case BUILTIN_FUNC_ARCSIN:      { return "arcsin"; }
+        case BUILTIN_FUNC_ARCCOS:      { return "arccos"; }
+        case BUILTIN_FUNC_ARCTAN:      { return "arctan"; }
+        case BUILTIN_FUNC_FRACT:       { return "fract"; }
+        case BUILTIN_FUNC_SMOOTHSTEP:  { return "smoothstep"; }
+        case BUILTIN_FUNC_MIX:         { return "mix"; }
+        case BUILTIN_FUNC_SAW:         { return "saw"; }
+        case BUILTIN_FUNC_SQUARE:      { return "square"; }
+        case BUILTIN_FUNC_TRIANGLE:    { return "triangle"; }
+        case BUILTIN_FUNC_CLAMP:       { return "clamp"; }
+        case BUILTIN_FUNC_POW:         { return "pow"; }
+        case BUILTIN_FUNC_LOG:         { return "natural log"; }
+        case BUILTIN_FUNC_MIN:         { return "min"; }
+        case BUILTIN_FUNC_MAX:         { return "max"; }
+        case BUILTIN_FUNC_UNKNOWN:     { return "unknown function"; }
+        default:
+            return "Builtin_Function_Not_Registered";
+    }
+}

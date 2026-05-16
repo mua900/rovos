@@ -23,6 +23,11 @@ enum UiElementId {
     MainEditor,
 };
 
+union UserData {
+    s64 number;
+    void* ptr;
+};
+
 struct DragInfo {
     vec2 start = vec2();
     bool drag = false;
@@ -259,6 +264,7 @@ struct TextEditor {
     Color title_color = Color();  // color of the title text
     Color title_bar_color = Color();
     DragInfo drag = {};
+    UserData user = {};
 
     TextEditor() {}
     TextEditor(Rectangle area, AssetId font, Color background_color, Color textColor, Color titleColor, Color titleBarColor, String editor_name, float title_height)

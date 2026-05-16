@@ -244,11 +244,26 @@ bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
                 if (field)
                 {
                     field->insert_line();
-                }
-                Font font = m_catalog.get_font(m_font);
-                field->calculate_cursor_from_selection(field->get_string(), font, true);
+                    Font font = m_catalog.get_font(m_font);
+                    // field->calculate_cursor_from_selection(field->get_string(), font, true);
 
-                
+                    /*
+                    String program_string = field->get_string();
+
+                    Script scrpt;
+                    if (scrpt.language == ScriptLanguage::LUA) {
+                        
+                    }
+                    else if (scrpt.language == ScriptLanguage::LANGUAGE) {
+                        if (interp_syntax_check(program_string.data, program_string.size)) {
+                            interp_set_program(scrpt.interp, program_string.data, program_string.size);
+                        }
+                        else {
+                            // @todo display error
+                        }
+                    }
+                    */
+                }
             }
 
             return true;

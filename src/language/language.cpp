@@ -277,13 +277,18 @@ StmtDeclVar* Parser::parse_variable_declaration() {
         return nullptr;
     }
 
+    if (!consume(TOKEN_TYPE_SEMICOLON)) {
+        parser_error = Error("Missing ; at the end of variable declaration", tokens.get(cursor).offset);
+        return nullptr;
+    }
+
     return new StmtDeclVar(name, rhs, type_name, infer_type);
 }
 
 StmtDeclProc* Parser::parse_procedure_declaration(bool builtin) {
     if (!consume(TOKEN_TYPE_PROC)) { return nullptr; }
 
-    if (tokens.get(cursor).type == TOKEN_TYPE_IDENT)
+    if (tokens.get(cursor).type != TOKEN_TYPE_IDENT)
     {
         parser_error = Error("Expeceted procedure name after proc keyword", tokens.get(cursor).offset);
         return nullptr;
@@ -315,7 +320,7 @@ StmtDeclProc* Parser::parse_procedure_declaration(bool builtin) {
         }
 
         if (!(paramFlags & PARAMETER_IS_INPUT) && !(paramFlags & PARAMETER_IS_OUTPUT)) {
-            paramFlags |= PARAMETER_IS_INPUT & PARAMETER_IS_OUTPUT;
+            paramFlags |= PARAMETER_IS_INPUT | PARAMETER_IS_OUTPUT;
         }
 
         if (tokens.get(cursor).type != TOKEN_TYPE_IDENT) {

@@ -10,6 +10,8 @@
 
 #include "language/lang.hpp"
 
+#include "lua.h"
+
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 
@@ -51,6 +53,20 @@ enum Events {
     EVENT_COUNT,
 };
 
+enum ScriptLanguage {
+    LUA,
+    LANGUAGE,  // @todo find a name for this
+};
+
+struct Script {
+    ScriptLanguage language;
+
+    union {
+        lua_State* lua;
+        Interp* interp;
+    };
+};
+
 class Application {
 public:
     ApplicationMode m_mode = ModeMenu;
@@ -68,14 +84,14 @@ public:
     s64 m_time = 0;
     double m_time_seconds = 0;
 
-    DArray<Interp*> programs = {};
-
     Event_Timeout m_events[EVENT_COUNT] = {};
 
     DArray<Text> m_rendered_text = {};
 
     AssetId m_font = {};
     AssetId m_editor_font = {};
+
+    DArray<Script> scripts = {};
 
     bool quit = false;
     bool doing_text_input = false;

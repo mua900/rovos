@@ -18,7 +18,7 @@ struct Parser {
 
     bool parse(String program, ProgramTree& tree);
 
-    void set_symbols(Array<Variable> p_symbols) { symbols = p_symbols; }
+    void set_symbols(DArray<Variable> p_symbols) { symbols = p_symbols; }
 
     bool syntax_check(String program);
     bool check_program(String program);
@@ -27,8 +27,8 @@ struct Parser {
     void clear_error() { parser_error = Error(); }
 
 private:
-    Array<Variable> symbols = {};
-    Array<Token> tokens;
+    DArray<Variable> symbols = {};
+    DArray<Token> tokens;
 
     int cursor = 0;
     Error parser_error = {};

@@ -72,7 +72,7 @@ public:
 
     Event_Timeout m_events[EVENT_COUNT] = {};
 
-    Array<Text> m_rendered_text = {};
+    DArray<Text> m_rendered_text = {};
 
     AssetId m_font = {};
     AssetId m_editor_font = {};

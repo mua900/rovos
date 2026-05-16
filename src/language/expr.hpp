@@ -46,7 +46,7 @@ using ExprFlags = u8;
 
 struct Expr {
     ExprKind type;
-    Variable_Type result_type;  // the type the expression evaluates to
+    Variable_Type result_type = {};
     ExprFlags flags = 0;  // unused currently
 };
 
@@ -58,21 +58,17 @@ struct Expr_Literal : Expr {
     Expr_Literal(bool b) : value(b)
 	{
         type = ExprKind::Literal;
-        result_type = Var_Type_Boolean;
     }
     Expr_Literal(long long integer) : value(integer)
 	{
         type = ExprKind::Literal;
-        result_type = Var_Type_Integer;
     }
     Expr_Literal(double real) : value(real)
 	{
         type = ExprKind::Literal;
-        result_type = Var_Type_Real;
     }
     Expr_Literal(Value val) : value(val) {
         type = ExprKind::Literal;
-        result_type = val.type;
     }
 };
 
@@ -119,10 +115,10 @@ struct Expr_Grouping : Expr {
 
 struct Expr_Call : Expr {
     String function_name;  // @note do we need expressions that can return functions? Not currently.
-    Array<Expr*> arguments;
+    DArray<Expr*> arguments;
     int fn_id = 0;
 
-    Expr_Call(String f_name, Array<Expr*> args, int func_id) : function_name(f_name), arguments(args), fn_id(func_id)
+    Expr_Call(String f_name, DArray<Expr*> args, int func_id) : function_name(f_name), arguments(args), fn_id(func_id)
 	{
         type = ExprKind::Call;
         for (const auto arg : args)
@@ -135,13 +131,12 @@ struct Expr_Call : Expr {
 struct Expr_Variable : Expr {
     String name;
     unsigned int var_id = 0;
-    Variable_Type variable_type;
+    String variable_type;
     bool is_builtin = false;
 
-    Expr_Variable(String var_name, int id, Variable_Type var_type, bool builtin) : name(var_name), var_id(id), variable_type(var_type), is_builtin(builtin)
+    Expr_Variable(String var_name, int id, String var_type, bool builtin) : name(var_name), var_id(id), variable_type(var_type), is_builtin(builtin)
 	{
         type = ExprKind::Variable;
-        result_type = variable_type;
     }
 };
 
@@ -160,9 +155,9 @@ struct Expr_Ternary : Expr {
 };
 
 struct Expr_Tuple : Expr {
-	Array<Expr*> expressions;
+	DArray<Expr*> expressions;
 
-	Expr_Tuple(Array<Expr*> exprs)
+	Expr_Tuple(DArray<Expr*> exprs)
 		: expressions(exprs)
 	{
 		type = ExprKind::Tuple;
@@ -172,5 +167,8 @@ struct Expr_Tuple : Expr {
 		}
 	}
 };
+
+Expr* collapse_expr(Expr* root, const char** error_string);
+void free_tree(Expr* node);
 
 #endif // _EXPR_H

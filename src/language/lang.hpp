@@ -39,7 +39,7 @@ extern "C" {
     Interp* interp_create();
     void interp_destroy(Interp* interp);
     Interp* interp_copy(Interp* interp);
-    bool interp_check_program_string(const Interp* interp_or_null, const char* program_string, int length);
+    bool interp_syntax_check(const char* program_string, int length);
     bool interp_set_program(Interp* interp, const char* program_string, int length);
     void interp_run_program(Interp* interp);
     int interp_register_variable(Interp* interp, const char* name, int length, Variable_Type type);

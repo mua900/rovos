@@ -205,14 +205,15 @@ struct Bytecode_Processor {
 };
 
 struct InputStream {
-	Array<float> samples = {};
+	float* samples = nullptr;
+	size_t sample_count = 0;
 	int stride = 0;
 	int sample_index = 0;
 
 	InputStream() {}
-	InputStream(Array<float> p_samples, int p_stride)
+	InputStream(float* p_samples, size_t p_sample_count, int p_stride)
 		:
-		samples(p_samples), stride(p_stride)
+		samples(p_samples), sample_count(p_sample_count), stride(p_stride)
 	{}
 };
 

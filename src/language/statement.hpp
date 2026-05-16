@@ -24,6 +24,10 @@ struct Statement {
 
 struct ProgramTree {
     DArray<Statement*> statements = {};
+
+    ~ProgramTree() {
+        statements.reset();
+    }
 };
 
 struct StmtBlock : Statement {
@@ -63,7 +67,8 @@ struct Parameter {
 };
 
 using ProcFlags = u8;
-#define PROC_IS_BUILTIN BIT(0)
+#define PROC_IS_BUILTIN       BIT(0)
+#define PROC_HAS_SIDE_EFFECTS BIT(1)
 struct StmtDeclProc : Statement {
     String name = {};
     DArray<Parameter> parameters = {};

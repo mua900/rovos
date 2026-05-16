@@ -6,6 +6,11 @@
 
 typedef void (*InterpFunction)(Value* parameters, Value* return_values);
 
+#define VARIABLE_TYPE_REAL    String("real")
+#define VARIABLE_TYPE_INTEGER String("int")
+#define VARIABLE_TYPE_BOOLEAN String("bool")
+#define VARIABLE_TYPE_STRING  String("string")
+
 struct FunctionSignature {
     String name = {};
     DArray<Variable_Type> return_types = {};
@@ -41,7 +46,7 @@ struct Function {
 };
 
 // results should be an array of length of func.signature.return_types.size
-void call_function(Function func, Value* parameters, Value* results);
+void call_function(Function func, const Value* parameters, Value* results);
 
 // --- Builtin functions
 
@@ -86,11 +91,9 @@ const char* get_builtin_function_name(Builtin_Func_Type builtin);
 
 enum Builtin_Variable : unsigned int {
     BUILTIN_VARIABLE_TIME = 0,
-    BUILTIN_VARIABLE_SAMPLE_RATE = 1,
-    BUILTIN_VARIABLE_SAMPLE_INDEX = 2,
 
     // avalible if there is any bound input streams
-    BUILTIN_VARIABLE_INPUT_SAMPLE = 3,
+    BUILTIN_VARIABLE_INPUT_SAMPLE = 1,
 
     BUILTIN_VARIABLE_COUNT
 };
@@ -104,11 +107,21 @@ enum Builtin_Constants {
     BUILTIN_CONSTANT_COUNT,
 };
 
+using Function_ID = u32;
+using BuiltinVar_ID = u32;
+
+#define BUILTIN_VAR_ID_INVALID (BuiltinVar_ID)(-1)
+#define FUNC_ID_INVALID (Function_ID)(-1)
+
 using Builtin_Function_List = Function[BUILTIN_FUNC_COUNT];
 
 // the argument must be an array of pointers of size BUILTIN_FUNC_COUNT
 void get_default_builtin_functions(Function* func_list);
 
 bool is_builtin_function(const Expr_Call* call);
+
+Function_ID get_function_id(String name);
+double get_builtin_constant(String name);
+BuiltinVar_ID get_builtin_var_id(String name);
 
 #endif // _BUILTIN_H

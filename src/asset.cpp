@@ -28,7 +28,7 @@ using AssetParseLineResult = u32;
 
 // return false on failure or comment
 // <kind> <scope optional> <name> <path> [optional] [lazy]
-AssetParseLineResult asset_parse_line(String line, Asset& pointer)
+AssetParseLineResult asset_parse_line(String file, String line, Asset& pointer)
 {
 #if LOG_VERBOSE
     SCOPE_STRING(line, cstr);
@@ -195,8 +195,8 @@ AssetParseLineResult asset_parse_line(String line, Asset& pointer)
 
     pointer.kind = asset_kind;
     pointer.flags = flags;
-    pointer.name = name;
-    pointer.path = path;
+    pointer.name = StringReference(name.data - file.data, name.size);
+    pointer.path = StringReference(path.data - file.data, path.size);
     pointer.identifier = NullAssetId;
 
     result |= ASSET_LINE_IS_VALID;
@@ -278,7 +278,7 @@ bool parse_asset_description(const char* description, AssetCatalog& catalog)
         next_line_offset += string_match_character(desc, next_line_offset, '\n');
 
         Asset asset = {};
-        auto result = asset_parse_line(line, asset);
+        auto result = asset_parse_line(desc, line, asset);
 
         line_number += 1;
 
@@ -320,7 +320,8 @@ AssetId get_asset(String name, AssetCatalog& catalog)
 {
     for (auto& asset : catalog.assets)
     {
-        if (string_compare(asset.name, name))
+        auto asset_name = catalog.catalog.get_string(asset.name);
+        if (string_compare(asset_name, name))
         {
             if (asset.identifier.is_valid())
             {
@@ -368,6 +369,10 @@ AssetId get_asset_at_index(int index, AssetCatalog& catalog)
     else
     {
         if (asset.flags & ASSET_IS_FOLDER) {
+            auto asset_path = catalog.get_asset_path_at_index(index);
+            SCOPE_STRING(asset_path, folder);
+            get_to_run_tree_path(catalog.path, folder);
+
             if (!SDL_EnumerateDirectory(catalog.path.c_string(), asset_callback, &catalog)) {
                 return NullAssetId;
             }
@@ -375,6 +380,10 @@ AssetId get_asset_at_index(int index, AssetCatalog& catalog)
             return asset.identifier;
         }
         else {
+            auto asset_path = catalog.get_asset_path_at_index(index);
+            SCOPE_STRING(asset_path, asset_path_c);
+            get_to_run_tree_path(catalog.path, asset_path_c);
+
             bool load = load_asset(catalog.path, asset, catalog.load_context);
             if (!load)
             {
@@ -389,9 +398,6 @@ AssetId get_asset_at_index(int index, AssetCatalog& catalog)
 
 bool load_asset(String_Builder& path, Asset& asset, AssetLoadContext& load_context)
 {
-    SCOPE_STRING(asset.path, asset_path);
-    get_to_run_tree_path(path, asset_path);
-
     switch (asset.kind)
     {
         case ASSET_KIND_IMAGE: {
@@ -443,13 +449,10 @@ SDL_EnumerationResult asset_callback(void* userdata, const char* dirname, const 
 {
     AssetCatalog* catalog = (AssetCatalog*)userdata;
 
-    // we won't be parsing it again so it's not a problem if we add random things to the end of it
-    // catalog->catalog.append_char('\n');
-    String path = catalog->catalog.put_path(catalog->path.to_string());
     String name = catalog->catalog.put_string(String(fname));
 
-    String filename = String(fname);
     String ext = string_get_extension(name);
+    String file = string_get_file_name(name);
     AssetKind kind = get_asset_kind(ext);
     if (kind == ASSET_KIND_SENTINEL) {
         // we don't recognize the extension of this file
@@ -459,8 +462,8 @@ SDL_EnumerationResult asset_callback(void* userdata, const char* dirname, const 
     Asset asset = {};
     asset.kind = kind;
     asset.flags = ASSET_IS_FROM_FOLDER;
-    asset.name = string_get_file_name(name);
-    asset.path = path;
+    asset.name = catalog->catalog.get_reference(file);
+    asset.path = {};
 
     if (!load_asset(catalog->path, asset, catalog->load_context)) {
         return SDL_ENUM_FAILURE;

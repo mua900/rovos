@@ -41,8 +41,8 @@ using AssetFlags = u8;
 
 struct Asset {
     AssetKind kind;
-    String name = {};
-    String path = {};
+    StringReference name = {};
+    StringReference path = {};
     AssetFlags flags = 0;
 
     AssetId identifier = {};
@@ -69,6 +69,28 @@ struct AssetCatalog {
         int index = assets.add(asset);
         assets.get_ref(index).identifier.id = index;
         assets.get_ref(index).identifier.generation = 0;
+    }
+
+    String get_asset_name_at_index(int index) const {
+        return catalog.get_string(assets.get_ref(index).name);
+    }
+
+    String get_asset_path_at_index(int index) const {
+        return catalog.get_string(assets.get_ref(index).path);
+    }
+
+    String get_asset_name(AssetId id) const {
+        if (!id.is_valid()) return String();
+
+        const Asset& asset = assets.get_ref(id.id);
+        return catalog.get_string(asset.name);
+    }
+
+    String get_asset_path(AssetId id) const {
+        if (!id.is_valid()) return String();
+
+        const Asset& asset = assets.get_ref(id.id);
+        return catalog.get_string(asset.path);
     }
 
     SDL_Texture* get_image(AssetId id) const

@@ -386,10 +386,6 @@ int String_Builder::append_path(String string)
         }
     }
 
-    if (!ends_with(PathSeparator)) {
-        total += append(PathSeparator);
-    }
-
     return total;
 }
 
@@ -486,6 +482,11 @@ void String_Builder::clear() {
 String String_Builder::to_string()
 {
     return String(buffer, cursor);
+}
+
+String String_Builder::slice(int start, int length) const
+{
+    return String(buffer + start, length);
 }
 
 bool String::advance(int amount) {

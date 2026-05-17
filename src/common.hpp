@@ -246,6 +246,14 @@ struct MutableString {
 	}
 };
 
+struct StringReference {
+    s64 offset = 0;
+    s64 length = 0;
+
+    StringReference() {}
+    StringReference(s64 off, s64 len) : offset(off), length(len) {}
+};
+
 struct String_Builder {
     char* buffer = nullptr;
     int buffer_capacity = 0;
@@ -319,6 +327,15 @@ struct String_Builder {
     void free_buffer();
     void clear();
     String to_string();
+    String slice(int start, int length) const;
+    String get_string(StringReference ref) const { return slice(ref.offset, ref.length); }
+    StringReference get_reference(String s) const {
+        s64 offset = ptrdiff_t(s.data - buffer);
+        if (offset > 100000 || offset < 0) {
+            panic("Probably wrong pointers");
+        }
+        return StringReference{ offset, s.size };
+    }
     int ensure_size(int size);
 private:
     void resize();

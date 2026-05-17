@@ -118,7 +118,8 @@ bool Application::load_assets()
             AssetId id = get_asset_at_index(i, m_catalog);
             if (!id.is_valid())
             {
-                SCOPE_STRING(asset.name, name);
+                auto asset_name = m_catalog.get_asset_name(id);
+                SCOPE_STRING(asset_name, name);
                 if (!(asset.flags & ASSET_IS_OPTIONAL)) {
                     log_error("Couldn't load asset %s", name);
                     return false;

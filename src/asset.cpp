@@ -330,13 +330,23 @@ AssetId get_asset(String name, AssetCatalog& catalog)
             else
             {
                 if (asset.flags & ASSET_IS_FOLDER) {
+                    auto asset_path = catalog.get_asset_path(asset.identifier);
+                    SCOPE_STRING(asset_path, folder);
+                    get_to_run_tree_path(catalog.path, folder);
+                    catalog.path.append(PathSeparator);
+
                     if (!SDL_EnumerateDirectory(catalog.path.c_string(), asset_callback, &catalog)) {
                         return NullAssetId;
                     }
 
+                    asset.identifier.generation += 1;
                     return asset.identifier;
                 }
                 else {
+                    auto asset_path = catalog.get_asset_path(asset.identifier);
+                    SCOPE_STRING(asset_path, asset_path_c);
+                    get_to_run_tree_path(catalog.path, asset_path_c);
+
                     bool load = load_asset(catalog.path, asset, catalog.load_context);
                     if (!load)
                     {
@@ -372,11 +382,13 @@ AssetId get_asset_at_index(int index, AssetCatalog& catalog)
             auto asset_path = catalog.get_asset_path_at_index(index);
             SCOPE_STRING(asset_path, folder);
             get_to_run_tree_path(catalog.path, folder);
+            catalog.path.append(PathSeparator);
 
             if (!SDL_EnumerateDirectory(catalog.path.c_string(), asset_callback, &catalog)) {
                 return NullAssetId;
             }
 
+            asset.identifier.generation += 1;
             return asset.identifier;
         }
         else {
@@ -465,12 +477,16 @@ SDL_EnumerationResult asset_callback(void* userdata, const char* dirname, const 
     asset.name = catalog->catalog.get_reference(file);
     asset.path = {};
 
+    int amount = catalog->path.append_path(String(fname));
+
     if (!load_asset(catalog->path, asset, catalog->load_context)) {
         return SDL_ENUM_FAILURE;
     }
 
-    // stores a copy and assigns an id to the copy
-    catalog->add_asset(asset);
+    catalog->path.remove(amount);
+
+    int index = catalog->assets.add(asset);
+    catalog->assets.get_ref(index).identifier = { index, 1 };
 
     return SDL_ENUM_CONTINUE;
 }

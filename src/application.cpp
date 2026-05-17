@@ -110,7 +110,10 @@ bool Application::read_asset_catalog(String_Builder& path)
 
 bool Application::load_assets()
 {
-    for (int i = 0; i < m_catalog.assets.size(); i++)
+    // the size can actually change when we are trying to load assets since folder references will expand and include arbitrary amount of files
+    // so save the amount we need to iterate
+    int count = m_catalog.assets.size();
+    for (int i = 0; i < count; i++)
     {
         Asset& asset = m_catalog.assets[i];
         if (!(asset.flags & ASSET_IS_LAZY))
@@ -118,7 +121,7 @@ bool Application::load_assets()
             AssetId id = get_asset_at_index(i, m_catalog);
             if (!id.is_valid())
             {
-                auto asset_name = m_catalog.get_asset_name(id);
+                auto asset_name = m_catalog.get_asset_name_at_index(i);
                 SCOPE_STRING(asset_name, name);
                 if (!(asset.flags & ASSET_IS_OPTIONAL)) {
                     log_error("Couldn't load asset %s", name);
@@ -661,7 +664,7 @@ bool Application::init_ui()
         Color title_bar_color = Color(0x33, 0x55, 0x66);
         Color icon_background = Color(0x44, 0x55, 0x99);
         AssetId runIcon = get_asset(String("runIcon"), m_catalog);
-        AssetId compileIcon = get_asset(String("compileIcon"), m_catalog);
+        AssetId compileIcon = get_asset(String("buildIcon"), m_catalog);
         AssetId debugIcon = get_asset(String("debugIcon"), m_catalog);
         if (!(runIcon.is_valid() && compileIcon.is_valid() && debugIcon.is_valid())) {
             return false;

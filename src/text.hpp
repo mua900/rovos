@@ -39,12 +39,10 @@ struct Text {
 
 struct Icon {
     SDL_Texture* texture = nullptr;
-    vec2 position = {};
-    vec2 scale = {};
     Color background = {};
 
     Icon () {}
-    Icon (SDL_Texture* tex, vec2 pos, vec2 sca, Color bground) : texture(tex), position(pos), scale(sca), background(bground) {}
+    Icon (SDL_Texture* tex, Color bground) : texture(tex), background(bground) {}
 };
 
 #endif // _TEXT_H

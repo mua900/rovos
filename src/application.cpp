@@ -440,6 +440,23 @@ bool Application::mouse_input_game()
                 return true;
             }
 
+            if (editor.get_icon1_area().contains_centered(mouse_pos)) {
+                // @todo
+                // run
+                return true;
+            }
+            else if (editor.get_icon2_area().contains_centered(mouse_pos)) {
+                // compile
+                scripts.get(0).set_source(ScriptLanguage::LUA, editor.field.get_string());
+
+                return true;
+            }
+            else if (editor.get_icon3_area().contains_centered(mouse_pos)) {
+                // @todo
+                // debug
+                return true;
+            }
+
             Rectangle title_area = editor.get_title_area();
             if (title_area.contains_centered(mouse_pos))
             {
@@ -672,12 +689,12 @@ bool Application::init_ui()
         auto mainEditor = TextEditor(MainEditor, editor_area, m_font, editor_background, editor_text_color, title_color, title_bar_color, String("Main Editor"), 32);
         Rectangle titleArea = mainEditor.get_title_area();
         vec2 scale = titleArea.get_scale();
-        vec2 pos = titleArea.get_position();
-        vec2 icon_step = vec2(scale.x * 0.2, 0);
+        vec2 icon_scale = vec2(titleArea.get_scale().y);
+        vec2 titleEnd = titleArea.get_position() + vec2(scale.x / 2, 0);
         mainEditor.title_texture = render_text(m_render.renderer, mainEditor.name.to_string(), font, title_color);
-        mainEditor.icon1 = create_icon(runIcon, pos + vec2(scale.x, 0), scale * 0.5, icon_background);
-        mainEditor.icon2 = create_icon(compileIcon, pos + vec2(scale.x, 0), scale * 0.5, icon_background);
-        mainEditor.icon3 = create_icon(debugIcon, pos + vec2(scale.x, 0), scale * 0.5, icon_background);
+        mainEditor.icon1 = create_icon(runIcon, icon_background);
+        mainEditor.icon2 = create_icon(compileIcon, icon_background);
+        mainEditor.icon3 = create_icon(debugIcon, icon_background);
         mainEditor.user.number = 0;  // which script this editor is associated with
 
         m_ui[UiGame].editor.add(mainEditor);
@@ -840,9 +857,13 @@ void Application::render_text_editor(const TextEditor& editor) const
     Rectangle text_area = editor.field.m_area;
     Rectangle title_area = editor.get_title_area();
     render_textured_rectangle(title_area, editor.title_texture, editor.title_bar_color);
-    render_icon(editor.icon1);
-    render_icon(editor.icon2);
-    render_icon(editor.icon3);
+
+    Rectangle area = editor.get_title_area();
+    vec2 iconPos = area.get_position() + vec2(area.get_scale().x / 2, 0);
+    vec2 iconScale = vec2(editor.title_height, editor.title_height);
+    render_textured_rectangle(editor.get_icon1_area(), editor.icon1.texture, editor.icon1.background, true);
+    render_textured_rectangle(editor.get_icon2_area(), editor.icon2.texture, editor.icon2.background, true);
+    render_textured_rectangle(editor.get_icon3_area(), editor.icon3.texture, editor.icon3.background, true);
 
     render_text_field(editor.field);
 }
@@ -906,13 +927,9 @@ void Application::render_dropdown(const Drop_Down_List& list) const {
     }
 }
 
-Icon Application::create_icon(AssetId image, vec2 position, vec2 scale, Color background) {
+Icon Application::create_icon(AssetId image, Color background) {
     SDL_Texture* texture = m_catalog.get_image(image);
-    return Icon(texture, position, scale, background);
-}
-
-void Application::render_icon(const Icon& icon) const {
-    render_textured_rectangle(Rectangle(icon.position, icon.scale), icon.texture, icon.background);
+    return Icon(texture, background);
 }
 
 void Application::render_textured_rectangle(Rectangle rect, SDL_Texture* texture, Color color, bool strech, bool center) const {
@@ -964,18 +981,47 @@ void Application::toggle_text_input()
     }
 }
 
+void Application::run_program() {
+    Script script = scripts.get(0);
+    
+}
+
 bool Script::set_source(ScriptLanguage language, String source) {
     if (language == ScriptLanguage::LANGUAGE) {
         Interp* interp = interp_create();
         if (!interp) return false;
         if (!interp_set_program(interp, source.data, source.size)) return false;
 
+        script.clear_and_append(source);
+
         return true;
     }
     else if (language == ScriptLanguage::LUA) {
-        
-    }
+        String_Builder buffer = {};
+        buffer.append(source);
+        lua_State* state = init_lua();
 
-    ASSERT(false);
-    return false;
+
+        if (lua) {
+            lua_close(lua);
+        }
+        
+        lua = state;
+
+        script.clear_and_append(source);
+    }
+    else {
+        ASSERT(false);
+        return false;
+    }
+}
+
+lua_State* init_lua()
+{
+    lua_State* state = luaL_newstate();
+    if (!state) return nullptr;
+
+    // @todo register the functions we want etc.
+
+    return state;
 }

@@ -10,7 +10,7 @@
 
 #include "language/lang.hpp"
 
-#include "lua.h"
+#include "lua.hpp"
 
 enum ApplicationMode {
     ModeMenu,
@@ -53,13 +53,17 @@ enum ScriptLanguage {
 
 struct Script {
     ScriptLanguage language;
+    String_Builder script;
 
     union {
         lua_State* lua;
         Interp* interp;
     };
 
-    Script() {}
+    Script() {
+        // because you can't default initialize unions in C++.
+        memset(this, 0, sizeof(*this));
+    }
     bool set_source(ScriptLanguage language, String source);
 };
 
@@ -100,6 +104,8 @@ public:
 
     void cleanup();
 private:
+    void run_program();
+
     bool init_ui();
     bool load_assets();
 
@@ -140,14 +146,10 @@ private:
 
     bool read_asset_catalog(String_Builder& path);
 
-    bool set_eval_string(String s);
-    bool set_eval_string_left(String s);
-    bool set_eval_string_right(String s);
-
     void render_rectangle(Rectangle rect, Color color, bool center = true) const;
     void render_textured_rectangle(Rectangle rect, Texture* texture, Color color, bool strech = false, bool center = true) const;
 
-    Icon create_icon(AssetId image, vec2 position, vec2 scale, Color background);
+    Icon create_icon(AssetId image, Color background);
     void render_icon(const Icon& icon) const;
 
     void render_slider(Rectangle area, vec2 knob_scale, float value, Color slider_color, Color knob_color, const Text& text) const;
@@ -165,3 +167,4 @@ private:
 };
 
 void get_base_path(String_Builder& builder);
+lua_State* init_lua();

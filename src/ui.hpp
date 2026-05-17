@@ -301,6 +301,19 @@ struct TextEditor {
         return field.m_area;
     }
 
+    Rectangle get_icon1_area() const {
+        float iconScale = title_height;
+        return Rectangle(get_title_area().get_position() + vec2(get_title_area().w / 2, 0) - vec2(iconScale, 0) * 1, vec2(iconScale));
+    }
+    Rectangle get_icon2_area() const {
+        float iconScale = title_height;
+        return Rectangle(get_title_area().get_position() + vec2(get_title_area().w / 2, 0) - vec2(iconScale, 0) * 3, vec2(iconScale));
+    }
+    Rectangle get_icon3_area() const {
+        float iconScale = title_height;
+        return Rectangle(get_title_area().get_position() + vec2(get_title_area().w / 2, 0) - vec2(iconScale, 0) * 5, vec2(iconScale));
+    }
+
     void set_position(vec2 pos) {
         field.m_area.x = pos.x;
         field.m_area.y = pos.y;

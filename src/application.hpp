@@ -128,7 +128,7 @@ private:
     void draw_ui_state(const UiState& state);
 
     bool on_mouse_down();
-    void on_mouse_up();
+    void on_mouse_up(int button);
 
     bool mouse_input_game();
     bool mouse_input_menu();

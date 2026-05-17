@@ -267,10 +267,11 @@ struct TextEditor {
     float title_height = 0;
     Color title_color = Color();  // color of the title text
     Color title_bar_color = Color();
-
+    
     Icon icon1 = {};
     Icon icon2 = {};
     Icon icon3 = {};
+    int clicked_icon = 0;
 
     DragInfo drag = {};
     UserData user = {};

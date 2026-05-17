@@ -191,10 +191,11 @@ void Application::handle_events()
             case SDL_EVENT_MOUSE_BUTTON_UP:
             {
                 SDL_MouseButtonEvent mouse = e.button;
+
                 m_input.mouse.down = false;
                 m_input.mouse.buttonFlags = SDL_GetMouseState(&m_input.mouse.pos.x, &m_input.mouse.pos.y);
 
-                on_mouse_up();
+                on_mouse_up(mouse.button);
 
                 break;
             }
@@ -441,19 +442,29 @@ bool Application::mouse_input_game()
             }
 
             if (editor.get_icon1_area().contains_centered(mouse_pos)) {
-                // @todo
-                // run
+                editor.clicked_icon = 1;
+                
+                Script& script = scripts.get_ref(editor.user.number);
+                luaL_dostring(script.lua, script.script.c_string());
+                
+
                 return true;
             }
             else if (editor.get_icon2_area().contains_centered(mouse_pos)) {
+                editor.clicked_icon = 2;
+                
                 // compile
-                scripts.get(0).set_source(ScriptLanguage::LUA, editor.field.get_string());
+                Script& script = scripts.get_ref(editor.user.number);
+                script.set_source(ScriptLanguage::LUA, editor.field.get_string());
 
                 return true;
             }
             else if (editor.get_icon3_area().contains_centered(mouse_pos)) {
+                editor.clicked_icon = 3;
+                
                 // @todo
                 // debug
+
                 return true;
             }
 
@@ -611,15 +622,17 @@ void Application::update_ui_pos()
     }
 }
 
-void Application::on_mouse_up()
+void Application::on_mouse_up(int button)
 {
-    if (m_input.mouse.buttonFlags & MOUSE_LEFT)
+    if (button == MOUSE_LEFT)
     {
         UiState& ui = get_active_ui();
         for (auto& editor : ui.editor) {
             if (editor.drag.drag) {
                 editor.drag.drag = false;
             }
+
+            editor.clicked_icon = 0;
         }
     }
 }
@@ -861,9 +874,11 @@ void Application::render_text_editor(const TextEditor& editor) const
     Rectangle area = editor.get_title_area();
     vec2 iconPos = area.get_position() + vec2(area.get_scale().x / 2, 0);
     vec2 iconScale = vec2(editor.title_height, editor.title_height);
-    render_textured_rectangle(editor.get_icon1_area(), editor.icon1.texture, editor.icon1.background, true);
-    render_textured_rectangle(editor.get_icon2_area(), editor.icon2.texture, editor.icon2.background, true);
-    render_textured_rectangle(editor.get_icon3_area(), editor.icon3.texture, editor.icon3.background, true);
+    
+    Color clicked_background = Color(0xAA, 0x55, 0x33);
+    render_textured_rectangle(editor.get_icon1_area(), editor.icon1.texture, (editor.clicked_icon == 1) ? clicked_background : editor.icon1.background, true);
+    render_textured_rectangle(editor.get_icon2_area(), editor.icon2.texture, (editor.clicked_icon == 2) ? clicked_background : editor.icon2.background, true);
+    render_textured_rectangle(editor.get_icon3_area(), editor.icon3.texture, (editor.clicked_icon == 3) ? clicked_background : editor.icon3.background, true);
 
     render_text_field(editor.field);
 }

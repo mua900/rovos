@@ -81,7 +81,10 @@ bool Application::initialize()
     m_font = fontId;
     m_editor_font = editorFontId;
 
-    init_ui();
+    if (!init_ui()) {
+        log_error("Couldn't initialize user interface.");
+        return false;
+    }
 
     // scripts
     {
@@ -619,7 +622,7 @@ void Application::cleanup()
     SDL_Quit();
 }
 
-void Application::init_ui()
+bool Application::init_ui()
 {
     vec2 ws = get_window_size();
 
@@ -649,17 +652,36 @@ void Application::init_ui()
 
     m_ui[UiSettings].button.add(back);
 
-    Rectangle editor_area = Rectangle(ws.x * 0.5, ws.y * 0.5, ws.x * 0.8, ws.y * 0.8);
-    Color editor_background = Color(0x66, 0x55, 0x66);
-    Color editor_text_color = Color { 0x11, 0x22, 0x11, 0xff };
-    Color title_color = Color(0x44, 0x77, 0x55);
-    Color title_bar_color = Color(0x33, 0x55, 0x66);
-    auto mainEditor = TextEditor(MainEditor, editor_area, m_font, editor_background, editor_text_color, title_color, title_bar_color, String("Main Editor"), 32);
-    mainEditor.title_texture = render_text(m_render.renderer, mainEditor.name.to_string(), font, title_color);
-    mainEditor.user.number = 0;  // which script this editor is associated with
+    {
+        Rectangle editor_area = Rectangle(ws.x * 0.5, ws.y * 0.5, ws.x * 0.8, ws.y * 0.8);
+        Color editor_background = Color(0x66, 0x55, 0x66);
+        Color editor_text_color = Color{ 0x11, 0x22, 0x11, 0xff };
+        Color title_color = Color(0x44, 0x77, 0x55);
+        Color title_bar_color = Color(0x33, 0x55, 0x66);
+        Color icon_background = Color(0x44, 0x55, 0x99);
+        AssetId runIcon = get_asset(String("runIcon"), m_catalog);
+        AssetId compileIcon = get_asset(String("compileIcon"), m_catalog);
+        AssetId debugIcon = get_asset(String("debugIcon"), m_catalog);
+        if (!(runIcon.is_valid() && compileIcon.is_valid() && debugIcon.is_valid())) {
+            return false;
+        }
+        auto mainEditor = TextEditor(MainEditor, editor_area, m_font, editor_background, editor_text_color, title_color, title_bar_color, String("Main Editor"), 32);
+        Rectangle titleArea = mainEditor.get_title_area();
+        vec2 scale = titleArea.get_scale();
+        vec2 pos = titleArea.get_position();
+        vec2 icon_step = vec2(scale.x * 0.2, 0);
+        mainEditor.title_texture = render_text(m_render.renderer, mainEditor.name.to_string(), font, title_color);
+        mainEditor.icon1 = create_icon(runIcon, pos + vec2(scale.x, 0), scale * 0.5, icon_background);
+        mainEditor.icon2 = create_icon(compileIcon, pos + vec2(scale.x, 0), scale * 0.5, icon_background);
+        mainEditor.icon3 = create_icon(debugIcon, pos + vec2(scale.x, 0), scale * 0.5, icon_background);
+        mainEditor.user.number = 0;  // which script this editor is associated with
+
+        m_ui[UiGame].editor.add(mainEditor);
+    }
 
     m_ui[UiGame].button.add(backToMenu);
-    m_ui[UiGame].editor.add(mainEditor);
+
+    return true;
 }
 
 void Application::draw()
@@ -814,6 +836,9 @@ void Application::render_text_editor(const TextEditor& editor) const
     Rectangle text_area = editor.field.m_area;
     Rectangle title_area = editor.get_title_area();
     render_textured_rectangle(title_area, editor.title_texture, editor.title_bar_color);
+    render_icon(editor.icon1);
+    render_icon(editor.icon2);
+    render_icon(editor.icon3);
 
     render_text_field(editor.field);
 }
@@ -838,16 +863,18 @@ void Application::render_text_field(const Text_Field& text_field) const
         SDL_FRect texture_area = { 0, 0, texture_width, texture_height };
         SDL_RenderTexture(m_render.renderer, text_texture, &texture_area, &string_area);
 
-        const u8 cursorAlpha = 0xaa;
-        SDL_SetRenderDrawColor(m_render.renderer, 0x33, 0x56, 0x74, cursorAlpha);
+        if (doing_text_input) {
+            const u8 cursorAlpha = 0xaa;
+            SDL_SetRenderDrawColor(m_render.renderer, 0x33, 0x56, 0x74, cursorAlpha);
 
-        float cursor_width = tf_area.w / 1000;
-        SDL_FRect cursor = SDL_FRect { tf_area.x + text_field.m_cursor_pixel_x - cursor_width / 2,
-                                       tf_area.y + text_field.m_cursor_pixel_y,
-                                       cursor_width,
-                                       font_size };
+            float cursor_width = tf_area.w / 1000;
+            SDL_FRect cursor = SDL_FRect{ tf_area.x + text_field.m_cursor_pixel_x - cursor_width / 2,
+                                            tf_area.y + text_field.m_cursor_pixel_y,
+                                            cursor_width,
+                                            font_size };
 
-        SDL_RenderFillRect(m_render.renderer, &cursor);
+            SDL_RenderFillRect(m_render.renderer, &cursor);
+        }
     }
 }
 
@@ -873,6 +900,15 @@ void Application::render_dropdown(const Drop_Down_List& list) const {
                 vec2(area.x + area.w/2, area.y + area.h/2), vec2(area.w, area.h));
         }
     }
+}
+
+Icon Application::create_icon(AssetId image, vec2 position, vec2 scale, Color background) {
+    SDL_Texture* texture = m_catalog.get_image(image);
+    return Icon(texture, position, scale, background);
+}
+
+void Application::render_icon(const Icon& icon) const {
+    render_textured_rectangle(Rectangle(icon.position, icon.scale), icon.texture, icon.background);
 }
 
 void Application::render_textured_rectangle(Rectangle rect, SDL_Texture* texture, Color color, bool strech, bool center) const {
@@ -933,7 +969,7 @@ bool Script::set_source(ScriptLanguage language, String source) {
         return true;
     }
     else if (language == ScriptLanguage::LUA) {
-
+        
     }
 
     ASSERT(false);

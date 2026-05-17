@@ -1,3 +1,5 @@
+// @todo a proper tutorial for this language
+
 proc square(n : int) : int {
     return n * n;
 }

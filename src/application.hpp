@@ -12,9 +12,6 @@
 
 #include "lua.h"
 
-#include <SDL3/SDL.h>
-#include <SDL3_image/SDL_image.h>
-
 enum ApplicationMode {
     ModeMenu,
     ModeGame,
@@ -32,10 +29,6 @@ enum UiStates {
     UiSettings,
     UiGame,
     UiCount,
-};
-
-struct Window {
-    SDL_Window* window;
 };
 
 struct Event_Timeout {
@@ -107,7 +100,7 @@ public:
 
     void cleanup();
 private:
-    void init_ui();
+    bool init_ui();
     bool load_assets();
 
     UiState& get_active_ui();
@@ -137,7 +130,7 @@ private:
     bool mouse_input_settings();
 
     void update_keyboard_state();
-    bool keyboard_input(SDL_KeyboardEvent keyboard);
+    bool keyboard_input(KeyboardEvent keyboard);
 
     bool gen_static_text(Color color);
 
@@ -152,7 +145,10 @@ private:
     bool set_eval_string_right(String s);
 
     void render_rectangle(Rectangle rect, Color color, bool center = true) const;
-    void render_textured_rectangle(Rectangle rect, SDL_Texture* texture, Color color, bool strech = false, bool center = true) const;
+    void render_textured_rectangle(Rectangle rect, Texture* texture, Color color, bool strech = false, bool center = true) const;
+
+    Icon create_icon(AssetId image, vec2 position, vec2 scale, Color background);
+    void render_icon(const Icon& icon) const;
 
     void render_slider(Rectangle area, vec2 knob_scale, float value, Color slider_color, Color knob_color, const Text& text) const;
     void render_text_field(const Text_Field& text_field) const;

@@ -148,7 +148,8 @@ int string_match_character(const String s, int offset, char c);
 int string_find_character(String s, int offset, char c);
 String string_slice(String s, int start, int end);
 String string_slice_to_character(String s, int start, char c);
-String string_get_extension(String s);
+String string_get_extension(String s);  // the extension
+String string_get_file_name(String s);  // the string except the extension
 u64 string_hash(String s);
 
 int string_to_integer(String s, bool* success);
@@ -308,7 +309,9 @@ struct String_Builder {
     int append_hex(int n);
 	int append_float(float n);
     String put_string(String s);
+    String put_path(String path);
     const char* c_string();
+    bool ends_with(String s) const;
     void remove(int amount);  // remove the last n characters from the buffer
     void remove_slice(int start, int end);
     int clear_and_append(String s);

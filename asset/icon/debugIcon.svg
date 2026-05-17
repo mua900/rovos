@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="256"
+   height="256"
+   viewBox="0 0 67.733332 67.733333"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   sodipodi:docname="debug.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="true"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     inkscape:zoom="2.2290436"
+     inkscape:cx="168.68221"
+     inkscape:cy="160.38268"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Katman 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <ellipse
+       style="fill:#ff0000;stroke-width:0.293337"
+       id="path1"
+       cx="33.866665"
+       cy="33.866665"
+       rx="16.933332"
+       ry="25.929167" />
+    <rect
+       style="fill:#2b0000;stroke-width:0.270604"
+       id="rect1"
+       width="16.933332"
+       height="4.2333331"
+       x="8.4666662"
+       y="18.042116" />
+    <rect
+       style="fill:#2b0000;stroke-width:0.270604"
+       id="rect2"
+       width="16.933332"
+       height="4.2333331"
+       x="42.333332"
+       y="18.042116" />
+    <rect
+       style="fill:#2b0000;stroke-width:0.270604"
+       id="rect3"
+       width="16.933332"
+       height="4.2333331"
+       x="42.333332"
+       y="46.767067" />
+    <rect
+       style="fill:#2b0000;stroke-width:0.270604"
+       id="rect4"
+       width="16.933332"
+       height="4.2333331"
+       x="8.4666662"
+       y="46.767067" />
+    <rect
+       style="fill:#2b0000;stroke-width:0.270604"
+       id="rect5"
+       width="16.933332"
+       height="4.2333331"
+       x="42.333332"
+       y="32.404591" />
+    <rect
+       style="fill:#2b0000;stroke-width:0.270604"
+       id="rect6"
+       width="16.933332"
+       height="4.2333331"
+       x="8.4666662"
+       y="32.404591" />
+    <ellipse
+       style="fill:#800000;fill-opacity:1;stroke-width:0.419234"
+       id="path6"
+       cx="33.866665"
+       cy="9.7895832"
+       rx="12.7"
+       ry="8.4666662" />
+  </g>
+</svg>

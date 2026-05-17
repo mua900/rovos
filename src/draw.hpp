@@ -16,6 +16,8 @@ struct RenderContext {
     DArray<int> index_scratch;
 };
 
+using Texture = SDL_Texture;
+
 struct Mesh {
     DArray<vec2> points;
     DArray<int> indices;

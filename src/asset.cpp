@@ -312,6 +312,8 @@ bool parse_asset_description(const char* description, AssetCatalog& catalog)
     return true;
 }
 
+SDL_EnumerationResult asset_callback(void* userdata, const char* dirname, const char* fname);
+
 bool load_asset(String_Builder& path, Asset& asset, AssetLoadContext& load_context);
 
 AssetId get_asset(String name, AssetCatalog& catalog)
@@ -326,20 +328,30 @@ AssetId get_asset(String name, AssetCatalog& catalog)
             }
             else
             {
-                bool load = load_asset(catalog.path, asset, catalog.load_context);
-                if (!load)
-                {
-                    return NullAssetId;
-                }
+                if (asset.flags & ASSET_IS_FOLDER) {
+                    if (!SDL_EnumerateDirectory(catalog.path.c_string(), asset_callback, &catalog)) {
+                        return NullAssetId;
+                    }
 
-                asset.identifier.generation += 1;
-                return asset.identifier;
+                    return asset.identifier;
+                }
+                else {
+                    bool load = load_asset(catalog.path, asset, catalog.load_context);
+                    if (!load)
+                    {
+                        return NullAssetId;
+                    }
+
+                    asset.identifier.generation += 1;
+                    return asset.identifier;
+                }
             }
         }
     }
 
     return NullAssetId;
 }
+
 
 AssetId get_asset_at_index(int index, AssetCatalog& catalog)
 {
@@ -355,14 +367,23 @@ AssetId get_asset_at_index(int index, AssetCatalog& catalog)
     }
     else
     {
-        bool load = load_asset(catalog.path, asset, catalog.load_context);
-        if (!load)
-        {
-            return NullAssetId;
-        }
+        if (asset.flags & ASSET_IS_FOLDER) {
+            if (!SDL_EnumerateDirectory(catalog.path.c_string(), asset_callback, &catalog)) {
+                return NullAssetId;
+            }
 
-        asset.identifier.generation += 1;
-        return asset.identifier;
+            return asset.identifier;
+        }
+        else {
+            bool load = load_asset(catalog.path, asset, catalog.load_context);
+            if (!load)
+            {
+                return NullAssetId;
+            }
+
+            asset.identifier.generation += 1;
+            return asset.identifier;
+        }
     }
 }
 
@@ -409,13 +430,66 @@ bool load_asset(String_Builder& path, Asset& asset, AssetLoadContext& load_conte
         }
         case ASSET_KIND_SHADER: {
             // @todo
-            panic("No shaders yet");
+            panic("No shaders support is implemented yet");
             return false;
         }
         default: {
             return false;
         }
     }
+}
+
+SDL_EnumerationResult asset_callback(void* userdata, const char* dirname, const char* fname)
+{
+    AssetCatalog* catalog = (AssetCatalog*)userdata;
+
+    // we won't be parsing it again so it's not a problem if we add random things to the end of it
+    // catalog->catalog.append_char('\n');
+    String path = catalog->catalog.put_path(catalog->path.to_string());
+    String name = catalog->catalog.put_string(String(fname));
+
+    String filename = String(fname);
+    String ext = string_get_extension(name);
+    AssetKind kind = get_asset_kind(ext);
+    if (kind == ASSET_KIND_SENTINEL) {
+        // we don't recognize the extension of this file
+        return SDL_ENUM_CONTINUE;
+    }
+
+    Asset asset = {};
+    asset.kind = kind;
+    asset.flags = ASSET_IS_FROM_FOLDER;
+    asset.name = string_get_file_name(name);
+    asset.path = path;
+
+    if (!load_asset(catalog->path, asset, catalog->load_context)) {
+        return SDL_ENUM_FAILURE;
+    }
+
+    // stores a copy and assigns an id to the copy
+    catalog->add_asset(asset);
+
+    return SDL_ENUM_CONTINUE;
+}
+
+AssetKind get_asset_kind(String extension) {
+    if (string_compare(extension, String("svg"))) {
+        return ASSET_KIND_IMAGE;
+    }
+    else if (string_compare(extension, String("ogg"))) {
+        return ASSET_KIND_AUDIO;
+    }
+    else if (string_compare(extension, String("wav"))) {
+        return ASSET_KIND_AUDIO;
+    }
+    else if (string_compare(extension, String("ttf"))) {
+        return ASSET_KIND_FONT;
+    }
+    else if (string_compare(extension, String("shader"))) {
+        return ASSET_KIND_SHADER;
+    }
+
+    return ASSET_KIND_SENTINEL;
 }
 
 void get_base_path(String_Builder& builder)

@@ -50,6 +50,7 @@ add_library(language STATIC
 	src/language/bytecode.hpp
 	src/language/language.cpp
 	src/language/bytecode.cpp
+	src/language/function.cpp
 )
 
 add_library(lua STATIC

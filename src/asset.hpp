@@ -14,6 +14,7 @@ enum AssetKind {
     ASSET_KIND_FONT   = 3,
     ASSET_KIND_SHADER = 4,
     ASSET_KIND_COUNT,
+    ASSET_KIND_SENTINEL,
 };
 
 struct AssetId {
@@ -33,9 +34,10 @@ struct AssetLoadContext {
 using AssetFlags = u8;
 
 // by default 0
-#define ASSET_IS_FOLDER    BIT(0)
-#define ASSET_IS_OPTIONAL  BIT(1)
-#define ASSET_IS_LAZY      BIT(2)
+#define ASSET_IS_FOLDER      BIT(0)
+#define ASSET_IS_OPTIONAL    BIT(1)
+#define ASSET_IS_LAZY        BIT(2)
+#define ASSET_IS_FROM_FOLDER BIT(3)
 
 struct Asset {
     AssetKind kind;
@@ -69,7 +71,7 @@ struct AssetCatalog {
         assets.get_ref(index).identifier.generation = 0;
     }
 
-    const SDL_Texture* get_image(AssetId id) const
+    SDL_Texture* get_image(AssetId id) const
     {
         if (!id.is_valid())
         {
@@ -85,7 +87,7 @@ struct AssetCatalog {
         return asset.data.image;
     }
 
-    const Font get_font(AssetId id) const
+    Font get_font(AssetId id) const
     {
         if (!id.is_valid())
         {
@@ -101,7 +103,7 @@ struct AssetCatalog {
         return asset.data.font;
     }
 
-    const TrackId get_audio(AssetId id) const
+    TrackId get_audio(AssetId id) const
     {
         if (!id.is_valid())
         {
@@ -117,7 +119,7 @@ struct AssetCatalog {
         return asset.data.audio;
     }
 
-    const SDL_GPUShader* get_shader(AssetId id) const
+    SDL_GPUShader* get_shader(AssetId id) const
     {
         if (!id.is_valid())
         {
@@ -143,6 +145,8 @@ bool parse_assets(const char* path, AssetCatalog& catalog);
 AssetId get_asset(String name, AssetCatalog& catalog);
 // useful when iterating through the assets and you already know the index
 AssetId get_asset_at_index(int index, AssetCatalog& catalog);
+
+AssetKind get_asset_kind(String file_extension);
 
 void get_base_path(String_Builder& builder);
 void get_to_run_tree_path(String_Builder& builder, const char* path);

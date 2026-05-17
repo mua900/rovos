@@ -130,11 +130,22 @@ String string_get_extension(String s)
     {
         if (s.data[i] == '.')
         {
-            return string_slice(s, i, s.size);
+            // without the '.'
+            return string_slice(s, i + 1, s.size);
         }
     }
 
     return String{NULL,0};
+}
+
+String string_get_file_name(String s) {
+    for (int i = s.size - 1; i >= 0; i--) {
+        if (s.data[i] == '.') {
+            return string_slice(s, 0, i);
+        }
+    }
+
+    return String{NULL, 0};
 }
 
 u64 string_hash(String s)
@@ -375,8 +386,17 @@ int String_Builder::append_path(String string)
         }
     }
 
+    if (!ends_with(PathSeparator)) {
+        total += append(PathSeparator);
+    }
+
     return total;
 }
+
+bool String_Builder::ends_with(String s) const {
+    return string_compare(s, String(buffer + cursor - s.size, s.size));
+}
+
 
 int String_Builder::append_char(char ch) {
     ensure_size(cursor + 1);
@@ -414,6 +434,13 @@ String String_Builder::put_string(String s) {
     // this makes compatibility with so many things much easier
     append_char('\0');
     return String(buffer + c, s.size);
+}
+
+String String_Builder::put_path(String path) {
+    int c = cursor;
+    append_path(path);
+    append_char('\0');
+    return String(buffer + c, path.size);
 }
 
 int String_Builder::clear_and_append(String s) {

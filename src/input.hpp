@@ -23,6 +23,8 @@
 #define KEY_RIGHT SDL_SCANCODE_RIGHT
 #define KEY_LEFT SDL_SCANCODE_LEFT
 
+using KeyboardEvent = SDL_KeyboardEvent;
+
 // @todo gamepad
 
 struct KeyboardState {

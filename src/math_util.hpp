@@ -165,6 +165,14 @@ struct Rectangle {
         return Rectangle(x + w / 2, y + h / 2, w, h);
     }
 
+    vec2 get_position() const {
+        return vec2(x, y);
+    }
+
+    vec2 get_scale() const {
+        return vec2(w, h);
+    }
+
     vec2 get_top_left() const {
         return vec2(x - w / 2, y - h / 2);
     }

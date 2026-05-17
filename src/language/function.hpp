@@ -4,7 +4,7 @@
 #include "common.hpp"
 #include "expr.hpp"
 
-typedef void (*InterpFunction)(Value* parameters, Value* return_values);
+typedef void (*InterpFunction)(const Value* parameters, Value* return_values);
 
 #define VARIABLE_TYPE_REAL    String("real")
 #define VARIABLE_TYPE_INTEGER String("int")

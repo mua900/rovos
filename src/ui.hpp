@@ -14,6 +14,10 @@
 
 #define DEFAULT_BACKGROUND_COLOR Color{ 0x88, 0x33, 0x66, 0xff }
 
+struct Window {
+    SDL_Window* window;
+};
+
 enum UiElementId {
     UiElementSentinel = 0,
     PlayButton,
@@ -263,6 +267,11 @@ struct TextEditor {
     float title_height = 0;
     Color title_color = Color();  // color of the title text
     Color title_bar_color = Color();
+
+    Icon icon1 = {};
+    Icon icon2 = {};
+    Icon icon3 = {};
+
     DragInfo drag = {};
     UserData user = {};
 

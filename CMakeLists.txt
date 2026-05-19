@@ -36,6 +36,9 @@ add_executable(game
 	src/common.cpp
 	src/math_util.hpp
 	src/math_util.cpp
+	src/script.hpp
+	src/vehicle.hpp
+	src/vehicle.cpp
 	src/template.hpp
 	src/main.cpp
 )

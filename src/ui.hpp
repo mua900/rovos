@@ -25,6 +25,7 @@ enum UiElementId {
     QuitButton,
     BackButton,
     MainEditor,
+    PartsPanel,
 };
 
 union UserData {
@@ -414,20 +415,39 @@ struct Drop_Down_List {
     }
 };
 
+struct PanelTab {
+    Icon tabIcon = {};
+    DArray<Icon> icons = {};
+    Color color = {};
+
+    PanelTab() {}
+    PanelTab(Icon tab, Color color) : tabIcon(tab), color(color) {}
+};
+
+struct Panel {
+    UiElementId id = {};
+    Rectangle area = {};
+    DArray<PanelTab> tabs = {};
+
+    Panel() {}
+    Panel(UiElementId id, Rectangle area) : id(id), area(area) {}
+};
+
 #define TEXT_INPUT_TARGET_IS_VALID     BIT(0)
 #define TEXT_INPUT_TARGET_IS_EDITOR    BIT(1)
 
 struct TextInputTarget {
-    u16 index = 0;  // less than 65000 text fields? Probably not a problem
+    u16 index = 0;
     u16 flags = 0;
 };
 
 struct UiState {
-    DArray<TextEditor> editor;
-    DArray<Text_Field> text_field;
-    DArray<Drop_Down_List> drop_down;
-    DArray<Label> button;
-    DArray<Label> label;
+    DArray<TextEditor> editor = {};
+    DArray<Text_Field> text_field = {};
+    DArray<Drop_Down_List> drop_down = {};
+    DArray<Label> button = {};
+    DArray<Label> label = {};
+    DArray<Panel> panels = {};
 
     TextInputTarget text_input_target = {};
     vec2 assumed_window_size = {};

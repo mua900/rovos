@@ -7,10 +7,7 @@
 #include "asset.hpp"
 #include "input.hpp"
 #include "draw.hpp"
-
-#include "language/lang.hpp"
-
-#include "lua.hpp"
+#include "game.hpp"
 
 enum ApplicationMode {
     ModeMenu,
@@ -27,6 +24,7 @@ enum MenuName {
 enum UiStates {
     UiMainMenu,
     UiSettings,
+    UiEditor,
     UiGame,
     UiCount,
 };
@@ -44,27 +42,6 @@ struct Event_Timeout {
 enum Events {
     EVENT_DUMMY,
     EVENT_COUNT,
-};
-
-enum ScriptLanguage {
-    LUA,
-    LANGUAGE,  // @todo find a name for this
-};
-
-struct Script {
-    ScriptLanguage language;
-    String_Builder script;
-
-    union {
-        lua_State* lua;
-        Interp* interp;
-    };
-
-    Script() {
-        // because you can't default initialize unions in C++.
-        memset(this, 0, sizeof(*this));
-    }
-    bool set_source(ScriptLanguage language, String source);
 };
 
 class Application {
@@ -91,7 +68,7 @@ public:
     AssetId m_font = {};
     AssetId m_editor_font = {};
 
-    DArray<Script> scripts = {};
+    GameState game = {};
 
     bool quit = false;
     bool doing_text_input = false;
@@ -107,6 +84,9 @@ private:
     void run_program();
 
     bool init_ui();
+    bool init_game_ui();
+    bool init_editor_ui();
+
     bool load_assets();
 
     UiState& get_active_ui();
@@ -124,6 +104,7 @@ private:
     void draw_main_menu();
     void draw_settings_menu();
     void draw_game_ui();
+    void draw_editor_ui();
 
     void draw_ui_state(const UiState& state);
 

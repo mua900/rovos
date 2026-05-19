@@ -88,7 +88,7 @@ bool Application::initialize()
 
     // scripts
     {
-        scripts.add(Script());
+        game.scripts.add(Script());
     }
 
     quit = false;
@@ -223,7 +223,7 @@ void Application::handle_events()
                 Text_Field* text_field = ui.get_selected_text_field();
                 if (text_field)
                 {
-                    Font font = m_catalog.get_font(m_font);
+                    Font font = m_catalog.get_font(m_editor_font);
 
                     text_field->append_string(input_text);
                     text_field->update_text(m_render.renderer, font, true);
@@ -284,7 +284,7 @@ bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
                 {
                     field->delete_at_cursor();
 
-                    Font font = m_catalog.get_font(m_font);
+                    Font font = m_catalog.get_font(m_editor_font);
                     field->update_text(m_render.renderer, m_catalog.get_font(field->fontId), true);                }
             }
             return true;
@@ -444,7 +444,7 @@ bool Application::mouse_input_game()
             if (editor.get_icon1_area().contains_centered(mouse_pos)) {
                 editor.clicked_icon = 1;
                 
-                Script& script = scripts.get_ref(editor.user.number);
+                Script& script = game.scripts.get_ref(editor.user.number);
                 luaL_dostring(script.lua, script.script.c_string());
                 
 
@@ -454,7 +454,7 @@ bool Application::mouse_input_game()
                 editor.clicked_icon = 2;
                 
                 // compile
-                Script& script = scripts.get_ref(editor.user.number);
+                Script& script = game.scripts.get_ref(editor.user.number);
                 script.set_source(ScriptLanguage::LUA, editor.field.get_string());
 
                 return true;
@@ -626,6 +626,8 @@ void Application::on_mouse_up(int button)
 {
     if (button == MOUSE_LEFT)
     {
+        // @todo maybe button interactions should take action on button up
+
         UiState& ui = get_active_ui();
         for (auto& editor : ui.editor) {
             if (editor.drag.drag) {
@@ -663,7 +665,7 @@ bool Application::init_ui()
     for (auto& ui : m_ui) { ui.assumed_window_size = ws; }
 
     vec2 button_scale = vec2(ws.x * 0.1, ws.y * 0.1);
-    Font font = m_catalog.get_font(m_font);
+    Font font = m_catalog.get_font(m_editor_font);
 
     Color button_color = Color(0x77, 0x55, 0x55);
     Color background = Color(0x33, 0x55, 0x66);
@@ -676,9 +678,7 @@ bool Application::init_ui()
     quit.id = QuitButton;
 
     Label back = Label(create_text(m_render.renderer, String("Back"), font, button_color), ws * 0.1, ws * 0.1, background);
-    Label backToMenu = Label(create_text(m_render.renderer, String("Main Menu"), font, button_color), ws * 0.05, ws * 0.1, background);
     back.id = BackButton;
-    backToMenu.id = BackButton;
 
     m_ui[UiMainMenu].button.add(play);
     m_ui[UiMainMenu].button.add(settings);
@@ -686,34 +686,84 @@ bool Application::init_ui()
 
     m_ui[UiSettings].button.add(back);
 
-    {
-        Rectangle editor_area = Rectangle(ws.x * 0.5, ws.y * 0.5, ws.x * 0.8, ws.y * 0.8);
-        Color editor_background = Color(0x66, 0x55, 0x66);
-        Color editor_text_color = Color{ 0x11, 0x22, 0x11, 0xff };
-        Color title_color = Color(0x44, 0x77, 0x55);
-        Color title_bar_color = Color(0x33, 0x55, 0x66);
-        Color icon_background = Color(0x44, 0x55, 0x99);
-        AssetId runIcon = get_asset(String("runIcon"), m_catalog);
-        AssetId compileIcon = get_asset(String("buildIcon"), m_catalog);
-        AssetId debugIcon = get_asset(String("debugIcon"), m_catalog);
-        if (!(runIcon.is_valid() && compileIcon.is_valid() && debugIcon.is_valid())) {
-            return false;
-        }
-        auto mainEditor = TextEditor(MainEditor, editor_area, m_font, editor_background, editor_text_color, title_color, title_bar_color, String("Main Editor"), 32);
-        Rectangle titleArea = mainEditor.get_title_area();
-        vec2 scale = titleArea.get_scale();
-        vec2 icon_scale = vec2(titleArea.get_scale().y);
-        vec2 titleEnd = titleArea.get_position() + vec2(scale.x / 2, 0);
-        mainEditor.title_texture = render_text(m_render.renderer, mainEditor.name.to_string(), font, title_color);
-        mainEditor.icon1 = create_icon(runIcon, icon_background);
-        mainEditor.icon2 = create_icon(compileIcon, icon_background);
-        mainEditor.icon3 = create_icon(debugIcon, icon_background);
-        mainEditor.user.number = 0;  // which script this editor is associated with
+    if (!init_game_ui()) return false;
+    if (!init_editor_ui()) return false;
 
-        m_ui[UiGame].editor.add(mainEditor);
+    return true;
+}
+
+bool Application::init_game_ui() {
+    vec2 ws = get_window_size();
+    Font font = m_catalog.get_font(m_editor_font);
+    Color button_color = Color(0x77, 0x55, 0x55);
+    Color background = Color(0x33, 0x55, 0x66);
+
+    Label backToMenu = Label(create_text(m_render.renderer, String("Main Menu"), font, button_color), ws * 0.05, ws * 0.1, background);
+    backToMenu.id = BackButton;
+
+    Rectangle editor_area = Rectangle(ws.x * 0.5, ws.y * 0.5, ws.x * 0.8, ws.y * 0.8);
+    Color editor_background = Color(0x66, 0x55, 0x66);
+    Color editor_text_color = Color{ 0x11, 0x22, 0x11, 0xff };
+    Color title_color = Color(0x44, 0x77, 0x55);
+    Color title_bar_color = Color(0x33, 0x55, 0x66);
+    Color icon_background = Color(0x44, 0x55, 0x99);
+    AssetId runIcon = get_asset(String("runIcon"), m_catalog);
+    AssetId compileIcon = get_asset(String("buildIcon"), m_catalog);
+    AssetId debugIcon = get_asset(String("debugIcon"), m_catalog);
+    if (!(runIcon.is_valid() && compileIcon.is_valid() && debugIcon.is_valid())) {
+        return false;
     }
+    auto mainEditor = TextEditor(MainEditor, editor_area, m_editor_font, editor_background, editor_text_color, title_color, title_bar_color, String("Main Editor"), 32);
+    Rectangle titleArea = mainEditor.get_title_area();
+    vec2 scale = titleArea.get_scale();
+    vec2 icon_scale = vec2(titleArea.get_scale().y);
+    vec2 titleEnd = titleArea.get_position() + vec2(scale.x / 2, 0);
+    mainEditor.title_texture = render_text(m_render.renderer, mainEditor.name.to_string(), font, title_color);
+    mainEditor.icon1 = create_icon(runIcon, icon_background);
+    mainEditor.icon2 = create_icon(compileIcon, icon_background);
+    mainEditor.icon3 = create_icon(debugIcon, icon_background);
+    mainEditor.user.number = 0;  // which script this editor is associated with
+
+    m_ui[UiGame].editor.add(mainEditor);
 
     m_ui[UiGame].button.add(backToMenu);
+    return true;
+}
+
+bool Application::init_editor_ui() {
+    vec2 ws = get_window_size();
+    UiState& ui = m_ui[UiEditor];
+
+    Rectangle panel_area = { 0, 0, ws.x * 0.3f, ws.y };
+    Color panel_color = Color(0x33, 0x44, 0x44);
+    Panel partsPanel (PartsPanel, panel_area);
+
+    Color iconColor = Color(0x77, 0x33, 0x44);
+    Color tabIconColor = Color(0x33, 0x66, 0x44);
+
+    AssetId tireIconId = get_asset(String("tireTabIcon"), m_catalog);
+    if (!tireIconId.is_valid()) return false;
+    Icon tireIcon = Icon(m_catalog.get_image(tireIconId), tabIconColor);
+    PanelTab tireTab(tireIcon, panel_color);
+    if (!load_tire_icons(tireTab.icons, iconColor, m_catalog)) return false;
+
+    AssetId chasisIconId = get_asset(String("chasisTabIcon"), m_catalog);
+    if (!chasisIconId.is_valid()) return false;
+    Icon chasisIcon = Icon(m_catalog.get_image(chasisIconId), tabIconColor);
+    PanelTab chasisTab(chasisIcon, panel_color);
+    if (!load_chasis_icons(chasisTab.icons, iconColor, m_catalog)) return false;
+
+    AssetId controllerIconId = get_asset(String("controllerTabIcon"), m_catalog);
+    if (!controllerIconId.is_valid()) return false;
+    Icon controllerIcon = Icon(m_catalog.get_image(controllerIconId), tabIconColor);
+    PanelTab controllerTab(controllerIcon, panel_color);
+    if (!load_controller_icons(controllerTab.icons, iconColor, m_catalog)) return false;
+
+    partsPanel.tabs.add(tireTab);
+    partsPanel.tabs.add(chasisTab);
+    partsPanel.tabs.add(controllerTab);
+
+    ui.panels.add(partsPanel);
 
     return true;
 }
@@ -794,6 +844,10 @@ void Application::draw_settings_menu()
 void Application::draw_game_ui()
 {
     draw_ui_state(m_ui[UiGame]);
+}
+
+void Application::draw_editor_ui() {
+    draw_ui_state(m_ui[UiEditor]);
 }
 
 void Application::draw_ui_state(const UiState& state)
@@ -997,7 +1051,7 @@ void Application::toggle_text_input()
 }
 
 void Application::run_program() {
-    Script script = scripts.get(0);
+    Script script = game.scripts.get(0);
     
 }
 

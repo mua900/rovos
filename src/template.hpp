@@ -19,6 +19,10 @@ public:
 		m_cap = cap;
 	}
 
+	~DArray() {
+		reset();
+	}
+
 	void discard_data() {
 		m_size = 0;
 	}
